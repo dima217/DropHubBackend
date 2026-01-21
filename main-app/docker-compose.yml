@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: mydatabase
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U myuser -d mydatabase -h localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - drophub-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    command: redis-server --requirepass myredis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'myredis', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - drophub-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: file-service-rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - drophub-network
+    healthcheck:
+      test: |
+        rabbitmq-diagnostics check_port_connectivity &&
+        rabbitmq-diagnostics check_virtual_hosts &&
+        rabbitmq-diagnostics check_alarms
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: constructor_auth_app
+    restart: always
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - drophub-network
+
+networks:
+  drophub-network:
+    external: true
+    name: drophub-network
+
+volumes:
+  postgres_data:
+  rabbitmq-data:
