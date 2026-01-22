@@ -121,6 +121,51 @@ export class UniversalPermissionService {
     });
   }
 
+  async getResourceParticipants(
+    resourceId: string,
+    resourceType: ResourceType,
+    userService: {
+      getUsersByIds(ids: number[]): Promise<
+        Array<{
+          id: number;
+          email: string;
+          profile?: { firstName: string; lastName: string; avatarUrl: string | null } | null;
+        }>
+      >;
+    },
+  ): Promise<
+    Array<{
+      userId: number;
+      role: AccessRole;
+      email: string | null;
+      profile: {
+        firstName: string;
+        lastName: string;
+        avatarUrl: string | null;
+      } | null;
+    }>
+  > {
+    const permissions = await this.getPermissionsByResource(resourceId, resourceType);
+    const userIds = permissions.map((p) => p.user.id);
+    const users = await userService.getUsersByIds(userIds);
+
+    return permissions.map((permission) => {
+      const user = users.find((u) => u.id === permission.user.id);
+      return {
+        userId: permission.user.id,
+        role: permission.role,
+        email: user?.email || null,
+        profile: user?.profile
+          ? {
+              firstName: user.profile.firstName,
+              lastName: user.profile.lastName,
+              avatarUrl: user.profile.avatarUrl,
+            }
+          : null,
+      };
+    });
+  }
+
   async verifyUserAccess(
     userId: number,
     resourceId: string,

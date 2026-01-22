@@ -42,4 +42,14 @@ export class StorageController {
   async getStoragesByUserId(@Payload() data: { userId: number }) {
     return this.storageService.getStoragesByUserId(data.userId);
   }
+
+  @MessagePattern('storage.getById')
+  async getStorageById(@Payload() data: { storageId: string }) {
+    return this.storageService.getStorageById(data.storageId);
+  }
+
+  @MessagePattern('storage.getByIds')
+  async getStoragesByIds(@Payload() data: { storageIds: string[] }) {
+    return this.storageService.getStoragesByIds(data.storageIds);
+  }
 }

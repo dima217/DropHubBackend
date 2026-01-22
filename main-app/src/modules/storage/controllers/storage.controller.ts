@@ -9,10 +9,12 @@ import {
   Param,
 } from '@nestjs/common';
 import { StorageClientService } from '../../file-client/services/storage-client.service';
+import { StorageService } from '../services/storage.service';
 import type { RequestWithUser } from 'src/types/express';
 import { GetStorageDto } from '../dto/get-storage.dto';
 import { GetStructureDto } from '../dto/get-structure.dto';
 import { DeleteItemDto } from '../dto/delete-item.dto';
+import { CreateStorageItemDto } from '../dto/create-storage-item.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
@@ -21,15 +23,59 @@ import { ResourceType, AccessRole } from 'src/modules/permission/entities/permis
 @Controller('storage')
 @UseGuards(JwtAuthGuard)
 export class UserStorageController {
-  constructor(private readonly storageClient: StorageClientService) {}
+  constructor(
+    private readonly storageClient: StorageClientService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @Post('/')
   async getUserStorages(@Req() req: RequestWithUser) {
-    return this.storageClient.getStoragesByUserId(req.user.id);
+    return this.storageService.getStoragesByUserId(req.user.id);
+  }
+
+  @Post('create')
+  async createStorage(@Req() req: RequestWithUser) {
+    return this.storageService.createStorage(req.user.id);
+  }
+
+  @Post('create-item')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  async createStorageItem(@Req() req: RequestWithUser, @Body() body: CreateStorageItemDto) {
+    return this.storageService.createStorageItem(
+      req.user.id,
+      body.storageId,
+      body.name,
+      body.isDirectory,
+      body.parentId || null,
+      body.fileId || null,
+    );
+  }
+
+  @Get(':storageId/participants')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'params',
+    'storageId',
+  )
+  async getStorageParticipants(@Req() req: RequestWithUser, @Param('storageId') storageId: string) {
+    return this.storageService.getStorageParticipants(req.user.id, storageId);
   }
 
   @UseGuards(PermissionGuard)
-  @RequirePermission(ResourceType.STORAGE, [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE], 'body', 'storageId')
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
   @Post('full-tree')
   async getFullStorageStructure(@Body() body: GetStorageDto, @Req() req: RequestWithUser) {
     if (!body.storageId) {
@@ -39,7 +85,12 @@ export class UserStorageController {
   }
 
   @UseGuards(PermissionGuard)
-  @RequirePermission(ResourceType.STORAGE, [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE], 'body', 'storageId')
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
   @Post('structure')
   async getStorageStructure(@Body() body: GetStructureDto, @Req() req: RequestWithUser) {
     if (!body.storageId) {
@@ -56,7 +107,12 @@ export class UserStorageController {
   }
 
   @UseGuards(PermissionGuard)
-  @RequirePermission(ResourceType.STORAGE, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'storageId')
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
   @Post('delete-item')
   async deleteStorageItem(@Body() body: DeleteItemDto, @Req() req: RequestWithUser) {
     if (!body.storageId || !body.itemId) {

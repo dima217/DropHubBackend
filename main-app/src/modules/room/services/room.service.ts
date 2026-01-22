@@ -223,30 +223,20 @@ export class RoomService {
       throw new NotFoundException('Room not found');
     }
 
-    const permissions = await this.permissionService.getPermissionsByResource(
+    const participants = (await this.permissionService.getResourceParticipants(
       roomId,
       ResourceType.ROOM,
-    );
-
-    const userIds = permissions.map((p: Permission) => p.user.id);
-
-    const users = await this.userService.getUsersByIds(userIds);
-
-    const participants = permissions.map((permission: Permission) => {
-      const user = users.find((u) => u.id === permission.user.id);
-      return {
-        userId: permission.user.id,
-        role: permission.role,
-        email: user?.email || null,
-        profile: user?.profile
-          ? {
-              firstName: user.profile.firstName,
-              lastName: user.profile.lastName,
-              avatarUrl: user.profile.avatarUrl,
-            }
-          : null,
-      };
-    });
+      this.userService,
+    )) as Array<{
+      userId: number;
+      role: AccessRole;
+      email: string | null;
+      profile: {
+        firstName: string;
+        lastName: string;
+        avatarUrl: string | null;
+      } | null;
+    }>;
 
     return {
       ...room,

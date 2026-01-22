@@ -17,6 +17,7 @@ export interface UserStorageDto {
   items: StorageItemDto[];
   createdAt: string;
   maxBytes: number;
+  userRole?: string;
 }
 export interface DeleteStorageItemResult {
   success: boolean;

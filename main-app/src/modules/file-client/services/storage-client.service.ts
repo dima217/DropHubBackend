@@ -59,4 +59,16 @@ export class StorageClientService {
   async getStoragesByUserId(userId: number): Promise<UserStorageDto[]> {
     return this.send<UserStorageDto[], { userId: number }>('storage.getByUserId', { userId });
   }
+
+  async getStorageById(storageId: string): Promise<UserStorageDto | null> {
+    return this.send<UserStorageDto | null, { storageId: string }>('storage.getById', {
+      storageId,
+    });
+  }
+
+  async getStoragesByIds(storageIds: string[]): Promise<UserStorageDto[]> {
+    return this.send<UserStorageDto[], { storageIds: string[] }>('storage.getByIds', {
+      storageIds,
+    });
+  }
 }

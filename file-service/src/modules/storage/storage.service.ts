@@ -55,7 +55,13 @@ export class StorageService {
     
     // Note: Permission creation should be handled by main app
     
-    return storage;
+    // Маппим в DTO формат
+    return {
+      id: storageId,
+      items: [],
+      createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
+      maxBytes: storage.maxBytes || 1024,
+    };
   }
 
   async createItemInStorage(params: CreateItemParams): Promise<StorageItem> {
@@ -77,6 +83,35 @@ export class StorageService {
     );
 
     return item;
+  }
+
+  async getStorageById(storageId: string) {
+    const storage = await this.storageModel.findById(storageId).lean().exec();
+    if (!storage) {
+      return null;
+    }
+    return {
+      id: storage._id.toString(),
+      items: [],
+      createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
+      maxBytes: storage.maxBytes || 1024,
+    };
+  }
+
+  async getStoragesByIds(storageIds: string[]) {
+    if (storageIds.length === 0) {
+      return [];
+    }
+    const storages = await this.storageModel
+      .find({ _id: { $in: storageIds } })
+      .lean()
+      .exec();
+    return storages.map((storage) => ({
+      id: storage._id.toString(),
+      items: [],
+      createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
+      maxBytes: storage.maxBytes || 1024,
+    }));
   }
 
   async getStoragesByUserId(userId: number) {
