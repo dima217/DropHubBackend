@@ -94,4 +94,36 @@ export class FileClientService {
       storedName,
     });
   }
+
+  async searchFiles(payload: {
+    roomIds: string[];
+    query?: string;
+    mimeType?: string;
+    creatorId?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<
+    Array<{
+      _id: any;
+      originalName: string;
+      mimeType: string;
+      size: number;
+      creatorId?: number;
+      roomId: string;
+      [key: string]: any;
+    }>
+  > {
+    return this.send<
+      Array<{
+        _id: any;
+        originalName: string;
+        mimeType: string;
+        size: number;
+        creatorId?: number;
+        roomId: string;
+        [key: string]: any;
+      }>,
+      typeof payload
+    >('file.search', payload);
+  }
 }

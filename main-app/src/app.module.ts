@@ -15,6 +15,7 @@ import { UserStorageModule } from '@application/storage/user_storage.module';
 import { RoomModule } from '@application/room/room.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { CommentsModule } from './modules/comments/comments.module';
     PermissionModule,
     FavoritesModule,
     CommentsModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

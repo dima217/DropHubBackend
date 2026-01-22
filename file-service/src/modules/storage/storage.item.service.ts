@@ -80,5 +80,49 @@ export class StorageItemService {
 
     return item;
   }
+
+  async searchItems(params: {
+    storageIds: string[];
+    query?: string;
+    tags?: string[];
+    creatorId?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<StorageItem[]> {
+    const { storageIds, query, tags, creatorId, limit = 50, offset = 0 } = params;
+
+    if (storageIds.length === 0) {
+      return [];
+    }
+
+    // Строим запрос
+    const mongoQuery: any = {
+      storageId: { $in: storageIds },
+    };
+
+    // Фильтр по названию
+    if (query) {
+      mongoQuery.name = { $regex: query, $options: 'i' };
+    }
+
+    // Фильтр по тегам - ищем элементы, у которых есть хотя бы один из указанных тегов
+    if (tags && tags.length > 0) {
+      mongoQuery.tags = { $in: tags };
+    }
+
+    // Фильтр по создателю
+    if (creatorId !== undefined) {
+      mongoQuery.creatorId = creatorId;
+    }
+
+    const items = await this.itemModel
+      .find(mongoQuery)
+      .limit(limit)
+      .skip(offset)
+      .lean()
+      .exec();
+
+    return items;
+  }
 }
 

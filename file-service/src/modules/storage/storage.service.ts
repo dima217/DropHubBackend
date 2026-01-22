@@ -204,5 +204,31 @@ export class StorageService {
       tags: updatedItem.tags || [],
     };
   }
+
+  async searchStorageItems(params: {
+    storageIds: string[];
+    query?: string;
+    tags?: string[];
+    creatorId?: number;
+    limit?: number;
+    offset?: number;
+  }) {
+    // Permission check is performed in main-app before calling this service
+
+    const items = await this.storageItemService.searchItems(params);
+
+    // Маппим в DTO формат
+    return items.map((item) => ({
+      id: item._id.toString(),
+      userId: item.userId,
+      name: item.name,
+      storageId: item.storageId,
+      isDirectory: item.isDirectory,
+      parentId: item.parentId?.toString() || null,
+      fileId: item.fileId?.toString() || null,
+      creatorId: item.creatorId,
+      tags: item.tags || [],
+    }));
+  }
 }
 

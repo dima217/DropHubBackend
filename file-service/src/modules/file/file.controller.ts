@@ -94,4 +94,19 @@ export class FileController {
     await this.fileService.deleteFileCompletely(data.storedName);
     return { success: true };
   }
+
+  @MessagePattern('file.search')
+  async searchFiles(
+    @Payload()
+    data: {
+      roomIds: string[];
+      query?: string;
+      mimeType?: string;
+      creatorId?: number;
+      limit?: number;
+      offset?: number;
+    },
+  ) {
+    return this.fileService.searchFiles(data);
+  }
 }

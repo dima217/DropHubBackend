@@ -86,4 +86,15 @@ export class StorageClientService {
       },
     );
   }
+
+  async searchStorageItems(payload: {
+    storageIds: string[];
+    query?: string;
+    tags?: string[];
+    creatorId?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<Array<StorageItemDto>> {
+    return this.send<Array<StorageItemDto>, typeof payload>('storage.searchItems', payload);
+  }
 }

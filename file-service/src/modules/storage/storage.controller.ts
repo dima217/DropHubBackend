@@ -59,4 +59,19 @@ export class StorageController {
   ) {
     return this.storageService.updateStorageItemTags(data.storageId, data.itemId, data.tags);
   }
+
+  @MessagePattern('storage.searchItems')
+  async searchItems(
+    @Payload()
+    data: {
+      storageIds: string[];
+      query?: string;
+      tags?: string[];
+      creatorId?: number;
+      limit?: number;
+      offset?: number;
+    },
+  ) {
+    return this.storageService.searchStorageItems(data);
+  }
 }

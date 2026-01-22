@@ -279,4 +279,86 @@ export class FileService {
       throw err;
     }
   }
+
+  async searchFiles(params: {
+    roomIds: string[];
+    query?: string;
+    mimeType?: string;
+    creatorId?: number;
+    limit?: number;
+    offset?: number;
+  }) {
+    // Permission check is performed in main-app before calling this service
+
+    const { roomIds, query, mimeType, creatorId, limit = 50, offset = 0 } = params;
+
+    if (roomIds.length === 0) {
+      return [];
+    }
+
+    // Получаем все комнаты с файлами
+    const rooms = await this.roomModel
+      .find({ _id: { $in: roomIds } })
+      .populate<{ files: FileDocument[] }>({
+        path: 'files',
+        select: '-__v',
+        options: { lean: true },
+      })
+      .lean()
+      .exec();
+
+    // Собираем все файлы из доступных комнат
+    const allFiles: Array<{
+      _id: any;
+      originalName: string;
+      mimeType: string;
+      size: number;
+      creatorId?: number;
+      roomId: string;
+      [key: string]: any;
+    }> = [];
+
+    for (const room of rooms) {
+      if (room.files && Array.isArray(room.files)) {
+        for (const file of room.files) {
+          // Фильтруем истекшие файлы
+          if (file.expiresAt && file.expiresAt <= new Date()) {
+            continue;
+          }
+
+          // Фильтруем только завершенные загрузки
+          if (file.uploadSession?.status !== FileUploadStatus.COMPLETE) {
+            continue;
+          }
+
+          // Применяем фильтры
+          if (query && !file.originalName.toLowerCase().includes(query.toLowerCase())) {
+            continue;
+          }
+
+          if (mimeType && file.mimeType !== mimeType) {
+            continue;
+          }
+
+          if (creatorId !== undefined && file.creatorId !== creatorId) {
+            continue;
+          }
+
+          allFiles.push({
+            _id: file._id,
+            originalName: file.originalName,
+            mimeType: file.mimeType,
+            size: file.size,
+            creatorId: file.creatorId,
+            roomId: room._id.toString(),
+          });
+        }
+      }
+    }
+
+    // Применяем пагинацию
+    const paginatedFiles = allFiles.slice(offset, offset + limit);
+
+    return paginatedFiles;
+  }
 }
