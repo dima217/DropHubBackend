@@ -25,5 +25,20 @@ export class RoomController {
   async deleteRoom(@Payload() data: { roomId: string; userId: number }) {
     return this.roomService.deleteRoom(data);
   }
+
+  @MessagePattern('room.getById')
+  async getRoomById(@Payload() data: { roomId: string }) {
+    return this.roomService.getRoomById(data.roomId);
+  }
+
+  @MessagePattern('room.getByIds')
+  async getRoomsByIds(@Payload() data: { roomIds: string[] }) {
+    return this.roomService.getRoomsByIds(data.roomIds);
+  }
+
+  @MessagePattern('room.updateParticipants')
+  async updateParticipants(@Payload() data: { roomId: string; count: number }) {
+    return this.roomService.updateParticipantsCount(data.roomId, data.count);
+  }
 }
 

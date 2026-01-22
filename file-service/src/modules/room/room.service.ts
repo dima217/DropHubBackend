@@ -53,13 +53,51 @@ export class RoomService {
     }
   }
 
-  async getRoomById(roomId: string): Promise<Partial<Room> | null> {
-    return this.roomModel.findById(roomId).lean().exec();
+  async getRoomById(roomId: string) {
+    const room = await this.roomModel.findById(roomId).lean().exec();
+    if (!room) {
+      return null;
+    }
+    return this.mapRoomToDto(room);
+  }
+
+  async getRoomsByIds(roomIds: string[]) {
+    if (roomIds.length === 0) {
+      return [];
+    }
+    const rooms = await this.roomModel
+      .find({ _id: { $in: roomIds } })
+      .lean()
+      .exec();
+    return rooms.map((room) => this.mapRoomToDto(room));
+  }
+
+  private mapRoomToDto(room: any) {
+    return {
+      id: room._id.toString(),
+      files: room.files?.map((f: any) => f.toString()) || [],
+      groups: room.groups?.map((g: any) => g.toString()) || [],
+      createdAt: room.createdAt?.toISOString() || new Date().toISOString(),
+      participants: room.participants || [],
+      owner: room.owner,
+      expiresAt: room.expiresAt?.toISOString() || null,
+      maxBytes: room.maxBytes || 0,
+      uploadSession: room.uploadSession || {
+        uploadId: undefined,
+        status: 'IN_PROGRESS',
+      },
+    };
   }
 
   async bindFileToRoom(roomId: string, fileId: string) {
     await this.roomModel.findByIdAndUpdate(roomId, {
       $push: { files: fileId },
+    });
+  }
+
+  async updateParticipantsCount(roomId: string, count: number) {
+    await this.roomModel.findByIdAndUpdate(roomId, {
+      $set: { participants: Array(count).fill('') },
     });
   }
 

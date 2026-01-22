@@ -29,4 +29,19 @@ export class RoomClientService {
   async deleteRoom(data: { roomId: string; userId: number }): Promise<DeleteRoomResult> {
     return this.send<DeleteRoomResult, { roomId: string; userId: number }>('room.delete', data);
   }
+
+  async getRoomById(roomId: string): Promise<RoomDto | null> {
+    return this.send<RoomDto | null, { roomId: string }>('room.getById', { roomId });
+  }
+
+  async getRoomsByIds(roomIds: string[]): Promise<RoomDto[]> {
+    return this.send<RoomDto[], { roomIds: string[] }>('room.getByIds', { roomIds });
+  }
+
+  async updateParticipantsCount(roomId: string, count: number): Promise<void> {
+    return this.send<void, { roomId: string; count: number }>('room.updateParticipants', {
+      roomId,
+      count,
+    });
+  }
 }

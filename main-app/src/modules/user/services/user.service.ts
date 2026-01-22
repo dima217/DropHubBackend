@@ -105,4 +105,15 @@ export class UsersService {
   async remove(id: number): Promise<void> {
     await this.userRepository.delete(id);
   }
+
+  async getUsersByIds(ids: number[]): Promise<User[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.userRepository.find({
+      where: ids.map((id) => ({ id })),
+      select: [...USER_SELECT_FIELDS],
+      relations: ['profile'],
+    });
+  }
 }

@@ -111,6 +111,16 @@ export class UniversalPermissionService {
     await this.permissionRepository.delete({ resourceId, resourceType });
   }
 
+  async getPermissionsByResource(
+    resourceId: string,
+    resourceType: ResourceType,
+  ): Promise<Permission[]> {
+    return await this.permissionRepository.find({
+      where: { resourceId, resourceType },
+      relations: ['user', 'user.profile'],
+    });
+  }
+
   async verifyUserAccess(
     userId: number,
     resourceId: string,

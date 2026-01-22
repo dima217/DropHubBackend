@@ -11,6 +11,7 @@ export interface RoomDto {
     uploadId?: string;
     status: string;
   };
+  userRole?: string;
 }
 
 export interface CreateRoomPayload {

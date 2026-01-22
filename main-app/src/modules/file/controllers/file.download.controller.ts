@@ -36,7 +36,12 @@ export class FileDownloadController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)
-  @RequirePermission(ResourceType.FILE, [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE], 'body', 'fileId')
+  @RequirePermission(
+    ResourceType.FILE,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'fileId',
+  )
   @Post('/url-private')
   async downloadFileByURLPrivate(@Body() body: DownloadFileDto, @Req() req: RequestWithUser) {
     const url = await this.fileClient.getDownloadLink(body.fileId, req.user.id);
