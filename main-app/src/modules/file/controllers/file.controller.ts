@@ -19,7 +19,12 @@ export class FileController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)
-  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE], 'body', 'roomId')
+  @RequirePermission(
+    ResourceType.ROOM,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'roomId',
+  )
   @Post('get-files')
   async getFiles(@Body() dto: GetFilesDto, @Req() req: RequestWithUser) {
     const files = await this.fileClient.getFilesByRoom(dto.roomId, req.user.id);

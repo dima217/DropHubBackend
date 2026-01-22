@@ -1,8 +1,9 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { StorageClientService } from '../../file-client/services/storage-client.service';
 import { UniversalPermissionService } from '../../permission/services/permission.service';
 import { ResourceType, AccessRole } from '../../permission/entities/permission.entity';
 import { UsersService } from '../../user/services/user.service';
+import { StorageItemDto } from '../../file-client/types/storage';
 
 @Injectable()
 export class StorageService {
@@ -13,21 +14,20 @@ export class StorageService {
   ) {}
 
   async createStorage(userId: number) {
-    // Проверяем, есть ли у пользователя уже storage
     const existingPermissions = await this.permissionService.getPermissionsByUserIdAndType(
       userId,
       ResourceType.STORAGE,
     );
 
     if (existingPermissions.length > 0) {
-      throw new ConflictException('User already has a storage. Only one storage per user is allowed.');
+      throw new ConflictException(
+        'User already has a storage. Only one storage per user is allowed.',
+      );
     }
 
-    // Создаем storage в file-service
     const storage = await this.storageClient.createStorage(userId);
     const storageId = storage.id;
 
-    // Создаем разрешение ADMIN для владельца storage
     await this.permissionService.createPermission({
       userId,
       resourceId: storageId,
@@ -46,13 +46,11 @@ export class StorageService {
     parentId: string | null,
     fileId: string | null,
   ) {
-    // Проверяем доступ пользователя к storage
     await this.permissionService.verifyUserAccess(userId, storageId, ResourceType.STORAGE, [
       AccessRole.ADMIN,
       AccessRole.WRITE,
     ]);
 
-    // Создаем item в storage
     const item = await this.storageClient.createStorageItem({
       storageId,
       userId,
@@ -66,7 +64,6 @@ export class StorageService {
   }
 
   async getStoragesByUserId(userId: number) {
-    // Получаем все разрешения пользователя для storage
     const permissions = await this.permissionService.getPermissionsByUserIdAndType(
       userId,
       ResourceType.STORAGE,
@@ -76,13 +73,10 @@ export class StorageService {
       return [];
     }
 
-    // Получаем ID всех storage, к которым у пользователя есть доступ
     const storageIds = permissions.map((p) => p.resourceId);
 
-    // Получаем данные storage из file-service
     const storages = await this.storageClient.getStoragesByIds(storageIds);
 
-    // Возвращаем storage с информацией о роли пользователя
     return storages.map((storage) => {
       const permission = permissions.find((p) => p.resourceId === storage.id);
       return {
@@ -93,19 +87,32 @@ export class StorageService {
   }
 
   async getStorageParticipants(userId: number, storageId: string) {
-    // Проверяем доступ пользователя к storage
     await this.permissionService.verifyUserAccess(userId, storageId, ResourceType.STORAGE, [
       AccessRole.ADMIN,
       AccessRole.READ,
       AccessRole.WRITE,
     ]);
 
-    // Используем общий метод для получения участников
     return this.permissionService.getResourceParticipants(
       storageId,
       ResourceType.STORAGE,
       this.userService,
     );
   }
-}
 
+  async updateStorageItemTags(
+    userId: number,
+    storageId: string,
+    itemId: string,
+    tags: string[],
+  ): Promise<{ success: boolean; item: StorageItemDto }> {
+    await this.permissionService.verifyUserAccess(userId, storageId, ResourceType.STORAGE, [
+      AccessRole.ADMIN,
+      AccessRole.WRITE,
+    ]);
+
+    const item = await this.storageClient.updateStorageItemTags(storageId, itemId, tags);
+
+    return { success: true, item };
+  }
+}

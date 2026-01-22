@@ -7,6 +7,7 @@ export interface StorageItemDto {
   parentId: string | null;
   fileId?: string | null;
   creatorId?: number;
+  tags?: string[];
 }
 
 export interface StorageItemWithChildrenDto extends StorageItemDto {

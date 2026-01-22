@@ -13,6 +13,8 @@ import { RelationshipsModule } from '@application/relationships/relationships.mo
 import { FileModule } from '@application/file/files.module';
 import { UserStorageModule } from '@application/storage/user_storage.module';
 import { RoomModule } from '@application/room/room.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
+import { CommentsModule } from './modules/comments/comments.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { RoomModule } from '@application/room/room.module';
     UserModule,
     RelationshipsModule,
     PermissionModule,
+    FavoritesModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

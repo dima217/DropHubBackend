@@ -71,4 +71,19 @@ export class StorageClientService {
       storageIds,
     });
   }
+
+  async updateStorageItemTags(
+    storageId: string,
+    itemId: string,
+    tags: string[],
+  ): Promise<StorageItemDto> {
+    return this.send<StorageItemDto, { storageId: string; itemId: string; tags: string[] }>(
+      'storage.updateItemTags',
+      {
+        storageId,
+        itemId,
+        tags,
+      },
+    );
+  }
 }

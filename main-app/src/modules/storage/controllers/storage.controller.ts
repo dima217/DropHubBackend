@@ -15,6 +15,7 @@ import { GetStorageDto } from '../dto/get-storage.dto';
 import { GetStructureDto } from '../dto/get-structure.dto';
 import { DeleteItemDto } from '../dto/delete-item.dto';
 import { CreateStorageItemDto } from '../dto/create-storage-item.dto';
+import { UpdateStorageItemTagsDto } from '../dto/update-storage-item-tags.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
@@ -126,6 +127,23 @@ export class UserStorageController {
     };
 
     return this.storageClient.deleteStorageItem(params);
+  }
+
+  @Post('update-item-tags')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  async updateStorageItemTags(@Req() req: RequestWithUser, @Body() body: UpdateStorageItemTagsDto) {
+    return await this.storageService.updateStorageItemTags(
+      req.user.id,
+      body.storageId,
+      body.itemId,
+      body.tags,
+    );
   }
 }
 

@@ -66,5 +66,19 @@ export class StorageItemService {
 
     return this.itemModel.find(query).select('-__v').lean().exec();
   }
+
+  async updateItemTags(itemId: string, tags: string[]): Promise<StorageItem> {
+    const item = await this.itemModel.findByIdAndUpdate(
+      itemId,
+      { $set: { tags } },
+      { new: true },
+    );
+
+    if (!item) {
+      throw new NotFoundException('Item not found.');
+    }
+
+    return item;
+  }
 }
 

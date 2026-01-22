@@ -25,6 +25,9 @@ export class StorageItem {
 
   @Prop({ type: Number })
   creatorId?: number;
+
+  @Prop({ type: [String], default: [] })
+  tags?: string[];
 }
 
 export const StorageItemSchema = SchemaFactory.createForClass(StorageItem);

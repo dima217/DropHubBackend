@@ -52,4 +52,11 @@ export class StorageController {
   async getStoragesByIds(@Payload() data: { storageIds: string[] }) {
     return this.storageService.getStoragesByIds(data.storageIds);
   }
+
+  @MessagePattern('storage.updateItemTags')
+  async updateItemTags(
+    @Payload() data: { storageId: string; itemId: string; tags: string[] },
+  ) {
+    return this.storageService.updateStorageItemTags(data.storageId, data.itemId, data.tags);
+  }
 }

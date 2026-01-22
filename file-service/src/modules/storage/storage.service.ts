@@ -179,5 +179,30 @@ export class StorageService {
 
     return { success: true, itemId: params.itemId };
   }
+
+  async updateStorageItemTags(storageId: string, itemId: string, tags: string[]) {
+    // Permission check is performed in main-app before calling this service
+
+    const item = await this.storageItemService.getItemById(itemId);
+
+    if (item.storageId !== storageId) {
+      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+    }
+
+    const updatedItem = await this.storageItemService.updateItemTags(itemId, tags);
+
+    // Маппим в DTO формат
+    return {
+      id: updatedItem._id.toString(),
+      userId: updatedItem.userId,
+      name: updatedItem.name,
+      storageId: updatedItem.storageId,
+      isDirectory: updatedItem.isDirectory,
+      parentId: updatedItem.parentId?.toString() || null,
+      fileId: updatedItem.fileId?.toString() || null,
+      creatorId: updatedItem.creatorId,
+      tags: updatedItem.tags || [],
+    };
+  }
 }
 
