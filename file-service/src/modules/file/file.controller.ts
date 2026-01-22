@@ -4,6 +4,7 @@ import { FileService } from './file.service';
 import { UploadService } from './services/upload/upload.service';
 import { DownloadService } from './services/download/download.service';
 import { MultipartUploadService } from './services/upload/multipart.upload.service';
+import { PreviewService } from './services/preview/preview.service';
 import { UploadInitMultipartDto } from './dto/upload/upload-init-multipart.dto';
 
 @Controller()
@@ -13,6 +14,7 @@ export class FileController {
     private readonly uploadService: UploadService,
     private readonly downloadService: DownloadService,
     private readonly multipartUploadService: MultipartUploadService,
+    private readonly previewService: PreviewService,
   ) {}
 
   @MessagePattern('file.create')
@@ -108,5 +110,21 @@ export class FileController {
     },
   ) {
     return this.fileService.searchFiles(data);
+  }
+
+  // Preview operations
+  @MessagePattern('file.getPreviewUrl')
+  async getPreviewUrl(@Payload() data: { fileId: string; userId: number }) {
+    return this.previewService.getPreviewUrl(data);
+  }
+
+  @MessagePattern('file.getVideoThumbnailUrl')
+  async getVideoThumbnailUrl(@Payload() data: { fileId: string; userId: number }) {
+    return this.previewService.getVideoThumbnailUrl(data);
+  }
+
+  @MessagePattern('file.getVideoStreamUrl')
+  async getVideoStreamUrl(@Payload() data: { fileId: string; userId: number }) {
+    return this.previewService.getVideoStreamUrl(data);
   }
 }

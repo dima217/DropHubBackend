@@ -5,6 +5,7 @@ import { FileService } from './file.service';
 import { UploadService } from './services/upload/upload.service';
 import { DownloadService } from './services/download/download.service';
 import { MultipartUploadService } from './services/upload/multipart.upload.service';
+import { PreviewService } from './services/preview/preview.service';
 import { File, FileSchema } from './schemas/file.schema';
 import { Room, RoomSchema } from '../room/schemas/room.schema';
 import { S3Module } from '../s3/s3.module';
@@ -35,10 +36,11 @@ import { CacheModule } from '../../cache/cache.module';
     UploadService,
     DownloadService,
     MultipartUploadService,
+    PreviewService,
     S3ReadStream,
     S3WriteStream,
   ],
-  exports: [FileService, UploadService, DownloadService, MultipartUploadService],
+  exports: [FileService, UploadService, DownloadService, MultipartUploadService, PreviewService],
 })
 export class FileModule {}
 

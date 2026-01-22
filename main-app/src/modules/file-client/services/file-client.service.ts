@@ -126,4 +126,33 @@ export class FileClientService {
       typeof payload
     >('file.search', payload);
   }
+
+  async getPreviewUrl(
+    fileId: string,
+    userId: number,
+  ): Promise<
+    { previewUrl: string; type: 'image' } | { previewUrl: string; type: 'video'; size: number }
+  > {
+    return this.send<
+      { previewUrl: string; type: 'image' } | { previewUrl: string; type: 'video'; size: number },
+      { fileId: string; userId: number }
+    >('file.getPreviewUrl', { fileId, userId });
+  }
+
+  async getVideoThumbnailUrl(fileId: string, userId: number): Promise<{ thumbnailUrl: string }> {
+    return this.send<{ thumbnailUrl: string }, { fileId: string; userId: number }>(
+      'file.getVideoThumbnailUrl',
+      { fileId, userId },
+    );
+  }
+
+  async getVideoStreamUrl(
+    fileId: string,
+    userId: number,
+  ): Promise<{ streamUrl: string; size: number }> {
+    return this.send<{ streamUrl: string; size: number }, { fileId: string; userId: number }>(
+      'file.getVideoStreamUrl',
+      { fileId, userId },
+    );
+  }
 }
