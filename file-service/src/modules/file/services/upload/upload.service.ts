@@ -92,12 +92,7 @@ export class UploadService {
       });
     }
 
-    await this.permissionClient.verifyUserAccess(
-      userId,
-      resourceId,
-      resourceType,
-      [AccessRole.ADMIN, AccessRole.WRITE]
-    );
+    // Permission check is performed in main-app before calling this service
 
     const room = await this.roomService.getRoomById(resourceId);
     const fileExpiresAt = room?.expiresAt
@@ -138,12 +133,7 @@ export class UploadService {
       });
     }
 
-    await this.permissionClient.verifyUserAccess(
-      userId,
-      resourceId,
-      resourceType,
-      [AccessRole.ADMIN, AccessRole.WRITE]
-    );
+    // Permission check is performed in main-app before calling this service
 
     const { url, key } = await this.getPresignedUrl(originalName, mimeType);
 

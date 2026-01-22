@@ -4,6 +4,9 @@ import { RoomClientService } from '../../file-client/services/room-client.servic
 import type { RequestWithUser } from 'src/types/express';
 import { CreateRoomDto } from '../dto/create-room.dro';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
+import { PermissionGuard } from 'src/auth/guards/permission.guard';
+import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
+import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 
 @Controller('/room')
 export class RoomController {
@@ -28,7 +31,8 @@ export class RoomController {
   }
 
   @Delete()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'roomId')
   async deleteRoom(@Req() req: RequestWithUser, @Body() body: DeleteRoomBody) {
     const deleteData = {
       roomId: body.roomId,

@@ -4,6 +4,9 @@ import { DeleteFileDto } from '../dto/delete-file.dto';
 import { GetFilesDto } from '../dto/get-files.dto';
 import type { RequestWithUser } from 'src/types/express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
+import { PermissionGuard } from 'src/auth/guards/permission.guard';
+import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
+import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 
 @Controller('file')
 export class FileController {
@@ -15,7 +18,8 @@ export class FileController {
     return { success: true, updated: results.length };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE], 'body', 'roomId')
   @Post('get-files')
   async getFiles(@Body() dto: GetFilesDto, @Req() req: RequestWithUser) {
     const files = await this.fileClient.getFilesByRoom(dto.roomId, req.user.id);

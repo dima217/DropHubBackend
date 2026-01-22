@@ -7,6 +7,9 @@ import { DownloadFileMultipartDto } from '../dto/download/download-file.multipar
 import { DownloadFileDto } from '../dto/download/download-file.dto';
 import { Readable } from 'stream';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
+import { PermissionGuard } from 'src/auth/guards/permission.guard';
+import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
+import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 
 @Controller('/download')
 export class FileDownloadController {
@@ -32,7 +35,8 @@ export class FileDownloadController {
     return { url };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.FILE, [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE], 'body', 'fileId')
   @Post('/url-private')
   async downloadFileByURLPrivate(@Body() body: DownloadFileDto, @Req() req: RequestWithUser) {
     const url = await this.fileClient.getDownloadLink(body.fileId, req.user.id);

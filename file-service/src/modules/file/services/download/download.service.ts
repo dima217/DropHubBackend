@@ -78,13 +78,8 @@ export class DownloadService {
     if (!file) {
       throw new NotFoundException('File does not exist.');
     }
-    if (userId !== undefined) {
-      await this.permissionClient.verifyUserAccess(userId, fileId, ResourceType.FILE, [
-        AccessRole.ADMIN,
-        AccessRole.READ,
-        AccessRole.WRITE,
-      ]);
-    }
+    // Permission check is performed in main-app before calling this service
+    // userId is kept for potential future use or logging
 
     return file;
   }

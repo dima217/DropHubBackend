@@ -118,12 +118,7 @@ export class FileService {
       throw new BadRequestException("No roomId provided");
     }
 
-    await this.permissionClient.verifyUserAccess(
-      params.userId,
-      params.roomId,
-      ResourceType.ROOM,
-      [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE]
-    );
+    // Permission check is performed in main-app before calling this service
 
     const cacheKey = `room:files:${params.roomId}`;
 

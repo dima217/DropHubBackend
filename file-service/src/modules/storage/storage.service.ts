@@ -61,10 +61,7 @@ export class StorageService {
   async createItemInStorage(params: CreateItemParams): Promise<StorageItem> {
     const { storageId, userId, name, isDirectory, parentId, fileId } = params;
 
-    await this.permissionClient.verifyUserAccess(userId, storageId, ResourceType.STORAGE, [
-      AccessRole.ADMIN,
-      AccessRole.WRITE,
-    ]);
+    // Permission check is performed in main-app before calling this service
 
     if (!isDirectory && !fileId) {
       throw new BadRequestException('File items must have a fileId.');
@@ -117,21 +114,8 @@ export class StorageService {
     return responseItem;
   }
 
-  private async verifyUserAccess(userId: number, storageId: string, requiredRoles: AccessRole[]) {
-    await this.permissionClient.verifyUserAccess(
-      userId,
-      storageId,
-      ResourceType.STORAGE,
-      requiredRoles,
-    );
-  }
-
   async getFullStorageStructure(storageId: string, userId: number): Promise<StorageItem[]> {
-    await this.verifyUserAccess(userId, storageId, [
-      AccessRole.ADMIN,
-      AccessRole.READ,
-      AccessRole.WRITE,
-    ]);
+    // Permission check is performed in main-app before calling this service
 
     const items = await this.storageItemService.getAllItemsByStorageId(storageId);
 
@@ -139,11 +123,7 @@ export class StorageService {
   }
 
   async getStorageStructure(params: GetStorageItemsParams): Promise<StorageItem[]> {
-    await this.verifyUserAccess(params.userId, params.storageId, [
-      AccessRole.ADMIN,
-      AccessRole.READ,
-      AccessRole.WRITE,
-    ]);
+    // Permission check is performed in main-app before calling this service
 
     const items = await this.storageItemService.getItemsByParent(params.parentId);
 
@@ -151,10 +131,7 @@ export class StorageService {
   }
 
   async deleteStorageItem(params: DeleteStorageItemParams) {
-    await this.verifyUserAccess(params.userId, params.storageId, [
-      AccessRole.ADMIN,
-      AccessRole.WRITE,
-    ]);
+    // Permission check is performed in main-app before calling this service
 
     const item = await this.storageItemService.getItemById(params.itemId);
 

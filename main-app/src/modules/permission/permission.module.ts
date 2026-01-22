@@ -6,11 +6,12 @@ import { Permission } from './entities/permission.entity';
 import { UserModule } from '@application/user/user.module';
 import { PermissionController } from './controllers/permission.controller';
 import { CacheModule } from 'src/cache/cache.module';
+import { PermissionGuard } from 'src/auth/guards/permission.guard';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Permission]), UserModule, CacheModule],
   controllers: [PermissionController],
-  providers: [UniversalPermissionService],
-  exports: [UniversalPermissionService],
+  providers: [UniversalPermissionService, PermissionGuard],
+  exports: [UniversalPermissionService, PermissionGuard],
 })
 export class PermissionModule {}

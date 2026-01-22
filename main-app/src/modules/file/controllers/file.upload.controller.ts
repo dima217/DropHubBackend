@@ -9,13 +9,17 @@ import { UploadToRoomDto } from '../dto/upload/upload-room.dto';
 import { UploadToStorageDto } from '../dto/upload/upload-storage.dto';
 import { UserIpInterceptor } from 'src/common/interceptors/user.ip.interceptor';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
+import { PermissionGuard } from 'src/auth/guards/permission.guard';
+import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
+import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 
 @Controller('/upload')
 export class FileUploadController {
   constructor(private readonly fileClient: FileClientService) {}
 
   @Post('auth/room')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'roomId')
   @UseInterceptors(UserIpInterceptor)
   async uploadFileToRoomAuthenticated(
     @Body() s3UploadData: UploadToRoomDto,
@@ -32,7 +36,8 @@ export class FileUploadController {
   }
 
   @Post('auth/storage')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.STORAGE, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'storageId')
   @UseInterceptors(UserIpInterceptor)
   async uploadFileToStorageAuthenticated(
     @Body() s3UploadData: UploadToStorageDto,

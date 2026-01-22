@@ -68,9 +68,7 @@ export class RoomService {
       throw new BadRequestException('Room ID is required.');
     }
 
-    await this.permissionClient.verifyUserAccess(params.userId, params.roomId, ResourceType.ROOM, [
-      AccessRole.ADMIN,
-    ]);
+    // Permission check is performed in main-app before calling this service
 
     try {
       const deletedRoom = await this.roomModel.findByIdAndDelete(params.roomId);
