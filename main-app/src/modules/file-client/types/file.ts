@@ -11,6 +11,7 @@ export interface FileMeta {
   uploaderIp?: string;
   expiresAt?: Date | null;
   storedName: string;
+  creatorId?: number;
 }
 
 export interface RoomWithFiles {

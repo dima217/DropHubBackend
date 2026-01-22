@@ -51,6 +51,9 @@ export class File {
     uploadId?: string;
     status: FileUploadStatus;
   };
+
+  @Prop({ type: Number })
+  creatorId?: number;
 }
 
 export const FileSchema = SchemaFactory.createForClass(File);

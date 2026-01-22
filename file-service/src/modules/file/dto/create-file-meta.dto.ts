@@ -34,4 +34,8 @@ export class CreateFileMetaDto {
   @IsOptional()
   @IsObject()
   uploadSession?: UploadSessionDto;
+
+  @IsOptional()
+  @IsNumber()
+  creatorId?: number;
 }

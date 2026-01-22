@@ -1,4 +1,4 @@
-import { IsString, IsNumber, Min } from 'class-validator';
+import { IsString, IsNumber, Min, IsOptional } from 'class-validator';
 
 export class UploadInitMultipartDto {
   @IsNumber()
@@ -14,14 +14,21 @@ export class UploadInitMultipartDto {
 
   @IsString()
   uploadId: string;
-  
+
   @IsString()
   key: string;
-  
+
   @IsString()
   roomId: string;
-  
+
   @IsString()
   fileType: string;
-}
 
+  @IsOptional()
+  @IsNumber()
+  userId?: number;
+
+  @IsOptional()
+  @IsString()
+  ip?: string;
+}

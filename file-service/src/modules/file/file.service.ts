@@ -43,6 +43,7 @@ const fileMetaSchema = z.object({
     uploadId: z.string().optional(),
     status: z.string(),
   }),
+  creatorId: z.number().optional(),
 });
 
 const roomFilesSchema = z.object({

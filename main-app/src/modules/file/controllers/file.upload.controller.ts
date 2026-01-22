@@ -37,7 +37,12 @@ export class FileUploadController {
 
   @Post('auth/storage')
   @UseGuards(JwtAuthGuard, PermissionGuard)
-  @RequirePermission(ResourceType.STORAGE, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'storageId')
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
   @UseInterceptors(UserIpInterceptor)
   async uploadFileToStorageAuthenticated(
     @Body() s3UploadData: UploadToStorageDto,
@@ -66,8 +71,15 @@ export class FileUploadController {
   }
 
   @Post('multipart/init')
-  async uploadMultipartInit(@Body() body: UploadInitMultipartDto) {
-    const initRes = await this.fileClient.initMultipartUpload(body);
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'roomId')
+  @UseInterceptors(UserIpInterceptor)
+  async uploadMultipartInit(@Body() body: UploadInitMultipartDto, @Req() req: RequestWithUser) {
+    const initRes = await this.fileClient.initMultipartUpload({
+      ...body,
+      userId: req.user.id,
+      ip: req.userIp,
+    });
     return { success: true, data: initRes };
   }
 

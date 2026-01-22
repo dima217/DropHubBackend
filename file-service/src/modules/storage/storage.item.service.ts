@@ -34,6 +34,7 @@ export class StorageItemService {
     fileId: string | null,
     userId: string,
     storageId: string,
+    creatorId?: number,
   ): Promise<StorageItem> {
     const item = new this.itemModel({
       userId,
@@ -42,6 +43,7 @@ export class StorageItemService {
       parentId: parentId ? new Types.ObjectId(parentId) : null,
       fileId: fileId ? new Types.ObjectId(fileId) : undefined,
       storageId: storageId,
+      creatorId: creatorId || parseInt(userId, 10),
     });
     return item.save();
   }

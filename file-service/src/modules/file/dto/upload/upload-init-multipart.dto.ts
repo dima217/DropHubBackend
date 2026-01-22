@@ -23,4 +23,7 @@ export class UploadInitMultipartDto {
 
   @IsString()
   fileType: string;
+
+  @IsNumber()
+  userId?: number;
 }

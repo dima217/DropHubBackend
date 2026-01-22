@@ -22,6 +22,9 @@ export class StorageItem {
 
   @Prop({ type: Types.ObjectId, ref: 'SharedFile', default: null })
   fileId?: Types.ObjectId;
+
+  @Prop({ type: Number })
+  creatorId?: number;
 }
 
 export const StorageItemSchema = SchemaFactory.createForClass(StorageItem);

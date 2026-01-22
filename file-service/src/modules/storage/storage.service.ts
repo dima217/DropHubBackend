@@ -80,6 +80,7 @@ export class StorageService {
       fileId,
       userId.toString(),
       storageId,
+      userId,
     );
 
     return item;

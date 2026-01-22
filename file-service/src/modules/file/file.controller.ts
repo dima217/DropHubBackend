@@ -4,6 +4,7 @@ import { FileService } from './file.service';
 import { UploadService } from './services/upload/upload.service';
 import { DownloadService } from './services/download/download.service';
 import { MultipartUploadService } from './services/upload/multipart.upload.service';
+import { UploadInitMultipartDto } from './dto/upload/upload-init-multipart.dto';
 
 @Controller()
 export class FileController {
@@ -73,8 +74,9 @@ export class FileController {
 
   // Multipart upload
   @MessagePattern('file.multipart.init')
-  async initMultipart(@Payload() data: { params: any; ip: string }) {
-    return this.multipartUploadService.initUploadMultipart(data.params, data.ip);
+  async initMultipart(@Payload() data: UploadInitMultipartDto & { ip?: string }) {
+    const { ip, ...params } = data;
+    return this.multipartUploadService.initUploadMultipart(params, ip || '');
   }
 
   @MessagePattern('file.multipart.complete')

@@ -37,6 +37,7 @@ export class MultipartUploadService {
         uploadId: init.uploadId,
         status: FileUploadStatus.IN_PROGRESS,
       },
+      creatorId: params.userId,
     });
 
     return {

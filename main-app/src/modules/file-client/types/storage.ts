@@ -6,6 +6,7 @@ export interface StorageItemDto {
   isDirectory: boolean;
   parentId: string | null;
   fileId?: string | null;
+  creatorId?: number;
 }
 
 export interface StorageItemWithChildrenDto extends StorageItemDto {

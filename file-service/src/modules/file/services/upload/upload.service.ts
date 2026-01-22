@@ -108,6 +108,7 @@ export class UploadService {
       mimeType: mimeType,
       uploaderIp,
       expiresAt: fileExpiresAt,
+      creatorId: userId,
     });
 
     await this.roomService.bindFileToRoom(
@@ -144,6 +145,7 @@ export class UploadService {
       mimeType,
       uploaderIp,
       expiresAt: null,
+      creatorId: userId,
     });
 
     await this.storageService.createItemInStorage({
