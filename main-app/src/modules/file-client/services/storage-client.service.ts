@@ -20,6 +20,13 @@ export interface RestoreStorageItemPayload extends DeleteStorageItemPayload {
   newParentId?: string | null;
 }
 
+export interface MoveStorageItemPayload {
+  storageId: string;
+  itemId: string;
+  newParentId: string | null;
+  userId: number;
+}
+
 @Injectable()
 export class StorageClientService {
   constructor(@Inject('FILE_SERVICE') private readonly fileClient: ClientProxy) {}
@@ -107,6 +114,10 @@ export class StorageClientService {
         tags,
       },
     );
+  }
+
+  async moveStorageItem(data: MoveStorageItemPayload): Promise<StorageItemDto> {
+    return this.send<StorageItemDto, MoveStorageItemPayload>('storage.moveItem', data);
   }
 
   async searchStorageItems(payload: {

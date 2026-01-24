@@ -15,6 +15,7 @@ import { GetStorageDto } from '../dto/get-storage.dto';
 import { GetStructureDto } from '../dto/get-structure.dto';
 import { DeleteItemDto } from '../dto/delete-item.dto';
 import { RestoreItemDto } from '../dto/restore-item.dto';
+import { MoveItemDto } from '../dto/move-item.dto';
 import { CreateStorageItemDto } from '../dto/create-storage-item.dto';
 import { UpdateStorageItemTagsDto } from '../dto/update-storage-item-tags.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
@@ -206,6 +207,26 @@ export class UserStorageController {
       body.itemId,
       body.tags,
     );
+  }
+
+  @Post('move-item')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  async moveItem(@Req() req: RequestWithUser, @Body() body: MoveItemDto) {
+    if (!body.storageId || !body.itemId) {
+      throw new BadRequestException('Both Storage ID and Item ID are required.');
+    }
+    return await this.storageClient.moveStorageItem({
+      storageId: body.storageId,
+      itemId: body.itemId,
+      newParentId: body.newParentId ?? null,
+      userId: req.user.id,
+    });
   }
 }
 

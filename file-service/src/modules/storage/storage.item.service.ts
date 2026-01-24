@@ -219,5 +219,65 @@ export class StorageItemService {
 
     return items;
   }
+
+  async moveItem(itemId: string, newParentId: string | null): Promise<StorageItem> {
+    const item = await this.itemModel.findById(itemId);
+    if (!item) {
+      throw new NotFoundException('Item not found.');
+    }
+
+    if (item.deletedAt) {
+      throw new BadRequestException('Cannot move deleted item. Restore it first.');
+    }
+
+    if (
+      String(item.parentId) === String(newParentId) ||
+      (item.parentId === null && newParentId === null)
+    ) {
+      return item;
+    }
+
+    if (item.isDirectory && itemId === newParentId) {
+      throw new BadRequestException('Cannot move folder into itself.');
+    }
+
+    if (newParentId !== null) {
+      const parent = await this.itemModel.findById(newParentId);
+      if (!parent) {
+        throw new NotFoundException('Target folder not found.');
+      }
+      if (!parent.isDirectory) {
+        throw new BadRequestException('Target must be a folder.');
+      }
+      if (parent.deletedAt) {
+        throw new BadRequestException('Cannot move item to deleted folder.');
+      }
+      if (parent.storageId !== item.storageId) {
+        throw new BadRequestException('Cannot move item to another storage.');
+      }
+
+      if (item.isDirectory) {
+        let currentId: Types.ObjectId | null = parent._id;
+        while (currentId) {
+          if (currentId.toString() === itemId) {
+            throw new BadRequestException('Cannot move folder into its own subdirectory.');
+          }
+          const currentItem = await this.itemModel
+            .findById(currentId)
+            .select('parentId')
+            .lean()
+            .exec();
+          if (!currentItem || !currentItem.parentId) {
+            currentId = null;
+          } else {
+            currentId = currentItem.parentId;
+          }
+        }
+      }
+    }
+
+    item.parentId = newParentId ? new Types.ObjectId(newParentId) : null;
+    return item.save();
+  }
 }
 

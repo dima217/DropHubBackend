@@ -39,6 +39,13 @@ interface ItemWithChildren extends StorageItem {
   children?: StorageItem[];
 }
 
+interface MoveStorageItemParams {
+  storageId: string;
+  itemId: string;
+  newParentId: string | null;
+  userId: number;
+}
+
 @Injectable()
 export class StorageService {
   constructor(
@@ -176,7 +183,6 @@ export class StorageService {
       throw new ForbiddenException('Invalid storage item or ownership mismatch.');
     }
 
-    // Изменено на soft delete для поддержки корзины
     await this.storageItemService.softDeleteItem(params.itemId);
 
     return { success: true, itemId: params.itemId };
@@ -234,6 +240,30 @@ export class StorageService {
     }
 
     const updatedItem = await this.storageItemService.updateItemTags(itemId, tags);
+
+    // Маппим в DTO формат
+    return {
+      id: updatedItem._id.toString(),
+      userId: updatedItem.userId,
+      name: updatedItem.name,
+      storageId: updatedItem.storageId,
+      isDirectory: updatedItem.isDirectory,
+      parentId: updatedItem.parentId?.toString() || null,
+      fileId: updatedItem.fileId?.toString() || null,
+      creatorId: updatedItem.creatorId,
+      tags: updatedItem.tags || [],
+      deletedAt: updatedItem.deletedAt,
+    };
+  }
+
+  async moveStorageItem(params: MoveStorageItemParams) {
+    const item = await this.storageItemService.getItemById(params.itemId);
+
+    if (item.storageId !== params.storageId) {
+      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+    }
+
+    const updatedItem = await this.storageItemService.moveItem(params.itemId, params.newParentId);
 
     // Маппим в DTO формат
     return {

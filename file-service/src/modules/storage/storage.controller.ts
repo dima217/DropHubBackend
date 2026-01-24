@@ -75,6 +75,13 @@ export class StorageController {
     return this.storageService.updateStorageItemTags(data.storageId, data.itemId, data.tags);
   }
 
+  @MessagePattern('storage.moveItem')
+  async moveItem(
+    @Payload() data: { storageId: string; itemId: string; newParentId: string | null; userId: number },
+  ) {
+    return this.storageService.moveStorageItem(data);
+  }
+
   @MessagePattern('storage.searchItems')
   async searchItems(
     @Payload()
