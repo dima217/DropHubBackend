@@ -11,3 +11,4 @@ export interface IRoomService {
   deleteRoom(params: { userId: number; roomId: string }): Promise<{ message: string }>;
 }
 
+

@@ -6,3 +6,4 @@ export interface IUploadService {
   uploadFileByToken(params: UploadData): Promise<{ url: string }>;
 }
 
+

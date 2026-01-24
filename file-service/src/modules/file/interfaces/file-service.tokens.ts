@@ -4,3 +4,4 @@ export const DOWNLOAD_SERVICE_TOKEN = Symbol('IDownloadService');
 export const MULTIPART_UPLOAD_SERVICE_TOKEN = Symbol('IMultipartUploadService');
 export const PREVIEW_SERVICE_TOKEN = Symbol('IPreviewService');
 
+
