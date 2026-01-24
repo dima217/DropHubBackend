@@ -26,7 +26,6 @@ interface AuthenticatedGettingFilesByRoomParams {
   userId: number;
 }
 
-// Схемы для валидации кешированных данных
 const fileMetaSchema = z.object({
   _id: z.any(),
   originalName: z.string(),
@@ -83,7 +82,6 @@ export class FileService {
     return fileDoc.save();
   }
 
-  // Метод для инвалидации кеша комнаты
   async invalidateRoomCache(roomId: string): Promise<void> {
     await this.cacheService.delete(`room:files:${roomId}`);
   }
@@ -118,8 +116,6 @@ export class FileService {
     if (!params.roomId) {
       throw new BadRequestException("No roomId provided");
     }
-
-    // Permission check is performed in main-app before calling this service
 
     const cacheKey = `room:files:${params.roomId}`;
 
@@ -234,7 +230,6 @@ export class FileService {
       console.error(`Error deleting file from S3: ${storedName}`, err);
     }
 
-    // Инвалидация кеша
     try {
       await this.cacheService.delete(`file:meta:${fileId}`);
       await this.cacheService.delete(`download:url:${file.key}`);
@@ -288,7 +283,6 @@ export class FileService {
     limit?: number;
     offset?: number;
   }) {
-    // Permission check is performed in main-app before calling this service
 
     const { roomIds, query, mimeType, creatorId, limit = 50, offset = 0 } = params;
 
@@ -296,7 +290,6 @@ export class FileService {
       return [];
     }
 
-    // Получаем все комнаты с файлами
     const rooms = await this.roomModel
       .find({ _id: { $in: roomIds } })
       .populate<{ files: FileDocument[] }>({
@@ -307,31 +300,26 @@ export class FileService {
       .lean()
       .exec();
 
-    // Собираем все файлы из доступных комнат
     const allFiles: Array<{
-      _id: any;
+      _id: string;
       originalName: string;
       mimeType: string;
       size: number;
       creatorId?: number;
       roomId: string;
-      [key: string]: any;
     }> = [];
 
     for (const room of rooms) {
       if (room.files && Array.isArray(room.files)) {
         for (const file of room.files) {
-          // Фильтруем истекшие файлы
           if (file.expiresAt && file.expiresAt <= new Date()) {
             continue;
           }
 
-          // Фильтруем только завершенные загрузки
           if (file.uploadSession?.status !== FileUploadStatus.COMPLETE) {
             continue;
           }
 
-          // Применяем фильтры
           if (query && !file.originalName.toLowerCase().includes(query.toLowerCase())) {
             continue;
           }
@@ -345,7 +333,7 @@ export class FileService {
           }
 
           allFiles.push({
-            _id: file._id,
+            _id: String(file._id),
             originalName: file.originalName,
             mimeType: file.mimeType,
             size: file.size,
@@ -356,7 +344,6 @@ export class FileService {
       }
     }
 
-    // Применяем пагинацию
     const paginatedFiles = allFiles.slice(offset, offset + limit);
 
     return paginatedFiles;

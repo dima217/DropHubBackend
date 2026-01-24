@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { StorageItem } from './schemas/storage.item.schema';
@@ -8,7 +8,7 @@ export class StorageItemService {
   constructor(@InjectModel('StorageItem') private readonly itemModel: Model<StorageItem>) {}
 
   async getItemsByParent(parentId: string | null): Promise<StorageItem[]> {
-    const query: any = { parentId: parentId };
+    const query: any = { parentId: parentId, deletedAt: null };
 
     if (parentId === null) {
       query.parentId = null;
@@ -48,6 +48,100 @@ export class StorageItemService {
     return item.save();
   }
 
+  async softDeleteItem(itemId: string): Promise<void> {
+    const now = new Date();
+    const itemIdsToUpdate = [new Types.ObjectId(itemId)];
+    
+    const findAllChildren = async (parentId: Types.ObjectId): Promise<Types.ObjectId[]> => {
+      const children = await this.itemModel.find({ parentId }).select('_id isDirectory').exec();
+      let ids: Types.ObjectId[] = [];
+      for (const child of children) {
+        ids.push(child._id);
+        if (child.isDirectory) {
+          ids = ids.concat(await findAllChildren(child._id));
+        }
+      }
+      return ids;
+    };
+
+    const childrenIds = await findAllChildren(new Types.ObjectId(itemId));
+    itemIdsToUpdate.push(...childrenIds);
+
+    await this.itemModel.updateMany(
+      { _id: { $in: itemIdsToUpdate } },
+      { $set: { deletedAt: now } }
+    );
+  }
+
+  async restoreItem(itemId: string, newParentId?: string | null): Promise<void> {
+    const item = await this.itemModel.findById(itemId);
+    if (!item) {
+      throw new NotFoundException('Item not found.');
+    }
+
+    const update: any = { deletedAt: null };
+
+    if (newParentId !== undefined) {
+      if (newParentId !== null) {
+        const parent = await this.itemModel.findById(newParentId);
+        if (!parent) {
+          throw new NotFoundException('Target parent folder not found.');
+        }
+        if (parent.deletedAt) {
+          throw new BadRequestException('Target parent folder is in trash.');
+        }
+        if (!parent.isDirectory) {
+          throw new BadRequestException('Target parent must be a directory.');
+        }
+        update.parentId = new Types.ObjectId(newParentId);
+      } else {
+        update.parentId = null; 
+      }
+    } else {
+      if (item.parentId) {
+        const parent = await this.itemModel.findById(item.parentId);
+        if (!parent || parent.deletedAt) {
+          throw new BadRequestException(
+            'Original parent folder is deleted or missing. Please provide a new parent.',
+          );
+        }
+      }
+    }
+    await this.itemModel.findByIdAndUpdate(itemId, { $set: update });
+
+    const itemIdsToRestore: Types.ObjectId[] = [];
+
+    const findAllChildren = async (parentId: Types.ObjectId): Promise<Types.ObjectId[]> => {
+      const children = await this.itemModel.find({ parentId }).select('_id isDirectory').exec();
+      let ids: Types.ObjectId[] = [];
+      for (const child of children) {
+        ids.push(child._id);
+        if (child.isDirectory) {
+          ids = ids.concat(await findAllChildren(child._id));
+        }
+      }
+      return ids;
+    };
+
+    const childrenIds = await findAllChildren(new Types.ObjectId(itemId));
+    itemIdsToRestore.push(...childrenIds);
+
+    if (itemIdsToRestore.length > 0) {
+      await this.itemModel.updateMany(
+        { _id: { $in: itemIdsToRestore } },
+        { $set: { deletedAt: null } },
+      );
+    }
+  }
+
+  async getTrashItems(storageId: string): Promise<StorageItem[]> {
+    return this.itemModel
+      .find({ storageId, deletedAt: { $ne: null } })
+      .sort({ deletedAt: -1 })
+      .lean()
+      .exec();
+  }
+
   async deleteItem(itemId: string): Promise<void> {
     const itemsToDelete = await this.itemModel
       .find({
@@ -62,7 +156,7 @@ export class StorageItemService {
   }
 
   async getAllItemsByStorageId(storageId: string): Promise<StorageItem[]> {
-    const query = { storageId: storageId };
+    const query = { storageId: storageId, deletedAt: null };
 
     return this.itemModel.find(query).select('-__v').lean().exec();
   }
@@ -98,6 +192,7 @@ export class StorageItemService {
     // Строим запрос
     const mongoQuery: any = {
       storageId: { $in: storageIds },
+      deletedAt: null,
     };
 
     // Фильтр по названию

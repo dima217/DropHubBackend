@@ -8,6 +8,7 @@ export interface StorageItemDto {
   fileId?: string | null;
   creatorId?: number;
   tags?: string[];
+  deletedAt?: string | null;
 }
 
 export interface StorageItemWithChildrenDto extends StorageItemDto {

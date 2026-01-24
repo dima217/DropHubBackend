@@ -104,24 +104,22 @@ export class FileClientService {
     offset?: number;
   }): Promise<
     Array<{
-      _id: any;
+      _id: string;
       originalName: string;
       mimeType: string;
       size: number;
       creatorId?: number;
       roomId: string;
-      [key: string]: any;
     }>
   > {
     return this.send<
       Array<{
-        _id: any;
+        _id: string;
         originalName: string;
         mimeType: string;
         size: number;
         creatorId?: number;
         roomId: string;
-        [key: string]: any;
       }>,
       typeof payload
     >('file.search', payload);

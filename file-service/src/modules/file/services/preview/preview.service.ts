@@ -156,8 +156,6 @@ export class PreviewService {
       throw new BadRequestException('Thumbnail is only available for videos.');
     }
 
-    // Для thumbnail возвращаем тот же URL - браузер сам покажет первый кадр
-    // В будущем можно добавить генерацию thumbnail через ffmpeg
     const thumbnailUrl = await this.generatePreviewUrl(file.key, file.mimeType, true);
     return { thumbnailUrl };
   }
@@ -177,7 +175,6 @@ export class PreviewService {
     return { streamUrl: url, size };
   }
 
-  // Метод для инвалидации кеша при удалении файла
   async invalidatePreviewCache(key: string): Promise<void> {
     await this.cacheService.delete(`preview:url:${key}:image`);
     await this.cacheService.delete(`preview:url:${key}:video`);

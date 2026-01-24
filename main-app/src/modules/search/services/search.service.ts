@@ -38,14 +38,12 @@ export class SearchService {
       storageItems: [],
     };
 
-    // Определяем, в каких ресурсах искать
     const searchInRooms =
       dto.resourceType === SearchResourceType.ALL || dto.resourceType === SearchResourceType.ROOM;
     const searchInStorage =
       dto.resourceType === SearchResourceType.ALL ||
       dto.resourceType === SearchResourceType.STORAGE;
 
-    // Получаем разрешения пользователя
     if (searchInRooms) {
       const roomPermissions = await this.permissionService.getPermissionsByUserIdAndType(
         userId,
@@ -54,7 +52,6 @@ export class SearchService {
       const roomIds = roomPermissions.map((p) => p.resourceId);
 
       if (roomIds.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
         const files = await this.fileClient.searchFiles({
           roomIds,
           query: dto.query,
@@ -64,19 +61,12 @@ export class SearchService {
           offset: dto.offset,
         });
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         results.files = files.map((file) => ({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-          id: file._id?.toString() || '',
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          id: String(file._id),
           originalName: file.originalName,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           mimeType: file.mimeType,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           size: file.size,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           creatorId: file.creatorId,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           resourceId: file.roomId,
           resourceType: 'room' as const,
         }));
@@ -105,7 +95,6 @@ export class SearchService {
           name: item.name,
           isDirectory: item.isDirectory,
           creatorId: item.creatorId,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           tags: item.tags ?? [],
           resourceId: item.storageId,
           resourceType: 'storage' as const,

@@ -14,6 +14,7 @@ import type { RequestWithUser } from 'src/types/express';
 import { GetStorageDto } from '../dto/get-storage.dto';
 import { GetStructureDto } from '../dto/get-structure.dto';
 import { DeleteItemDto } from '../dto/delete-item.dto';
+import { RestoreItemDto } from '../dto/restore-item.dto';
 import { CreateStorageItemDto } from '../dto/create-storage-item.dto';
 import { UpdateStorageItemTagsDto } from '../dto/update-storage-item-tags.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
@@ -126,7 +127,68 @@ export class UserStorageController {
       userId: req.user.id,
     };
 
-    return this.storageClient.deleteStorageItem(params);
+    return await this.storageClient.deleteStorageItem(params);
+  }
+
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  @Post('restore-item')
+  async restoreStorageItem(@Body() body: RestoreItemDto, @Req() req: RequestWithUser) {
+    if (!body.storageId || !body.itemId) {
+      throw new BadRequestException('Both Storage ID and Item ID are required.');
+    }
+
+    const params = {
+      storageId: body.storageId,
+      itemId: body.itemId,
+      userId: req.user.id,
+      newParentId: body.newParentId,
+    };
+
+    return await this.storageClient.restoreStorageItem(params);
+  }
+
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  @Post('delete-item-permanent')
+  async permanentDeleteStorageItem(@Body() body: DeleteItemDto, @Req() req: RequestWithUser) {
+    if (!body.storageId || !body.itemId) {
+      throw new BadRequestException('Both Storage ID and Item ID are required.');
+    }
+
+    const params = {
+      storageId: body.storageId,
+      itemId: body.itemId,
+      userId: req.user.id,
+    };
+
+    return await this.storageClient.permanentDeleteStorageItem(params);
+  }
+
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  @Post('trash')
+  async getTrash(@Body() body: GetStorageDto, @Req() req: RequestWithUser) {
+    if (!body.storageId) {
+      throw new BadRequestException('Storage ID is required.');
+    }
+
+    return await this.storageClient.getTrashItems(body.storageId, req.user.id);
   }
 
   @Post('update-item-tags')

@@ -23,6 +23,7 @@ interface DeleteStorageItemParams {
   storageId: string;
   itemId: string;
   userId: number;
+  newParentId?: string | null;
 }
 
 interface CreateItemParams {
@@ -175,9 +176,52 @@ export class StorageService {
       throw new ForbiddenException('Invalid storage item or ownership mismatch.');
     }
 
+    // Изменено на soft delete для поддержки корзины
+    await this.storageItemService.softDeleteItem(params.itemId);
+
+    return { success: true, itemId: params.itemId };
+  }
+
+  async restoreStorageItem(params: DeleteStorageItemParams) {
+    const item = await this.storageItemService.getItemById(params.itemId);
+
+    if (item.storageId !== params.storageId) {
+      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+    }
+
+    await this.storageItemService.restoreItem(params.itemId, params.newParentId);
+
+    return { success: true, itemId: params.itemId };
+  }
+
+  async permanentDeleteStorageItem(params: DeleteStorageItemParams) {
+    const item = await this.storageItemService.getItemById(params.itemId);
+
+    if (item.storageId !== params.storageId) {
+      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+    }
+
     await this.storageItemService.deleteItem(params.itemId);
 
     return { success: true, itemId: params.itemId };
+  }
+
+  async getTrashItems(storageId: string) {
+    const items = await this.storageItemService.getTrashItems(storageId);
+
+    // Маппим в DTO формат
+    return items.map((item) => ({
+      id: item._id.toString(),
+      userId: item.userId,
+      name: item.name,
+      storageId: item.storageId,
+      isDirectory: item.isDirectory,
+      parentId: item.parentId?.toString() || null,
+      fileId: item.fileId?.toString() || null,
+      creatorId: item.creatorId,
+      tags: item.tags || [],
+      deletedAt: item.deletedAt,
+    }));
   }
 
   async updateStorageItemTags(storageId: string, itemId: string, tags: string[]) {
@@ -202,6 +246,7 @@ export class StorageService {
       fileId: updatedItem.fileId?.toString() || null,
       creatorId: updatedItem.creatorId,
       tags: updatedItem.tags || [],
+      deletedAt: updatedItem.deletedAt,
     };
   }
 

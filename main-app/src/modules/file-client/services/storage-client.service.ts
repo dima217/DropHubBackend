@@ -16,6 +16,10 @@ export interface DeleteStorageItemPayload {
   userId: number;
 }
 
+export interface RestoreStorageItemPayload extends DeleteStorageItemPayload {
+  newParentId?: string | null;
+}
+
 @Injectable()
 export class StorageClientService {
   constructor(@Inject('FILE_SERVICE') private readonly fileClient: ClientProxy) {}
@@ -48,6 +52,24 @@ export class StorageClientService {
 
   async deleteStorageItem(data: DeleteStorageItemPayload): Promise<DeleteStorageItemResult> {
     return this.send<DeleteStorageItemResult, DeleteStorageItemPayload>('storage.deleteItem', data);
+  }
+
+  async restoreStorageItem(data: RestoreStorageItemPayload): Promise<DeleteStorageItemResult> {
+    return this.send<DeleteStorageItemResult, RestoreStorageItemPayload>('storage.restoreItem', data);
+  }
+
+  async permanentDeleteStorageItem(data: DeleteStorageItemPayload): Promise<DeleteStorageItemResult> {
+    return this.send<DeleteStorageItemResult, DeleteStorageItemPayload>(
+      'storage.permanentDeleteItem',
+      data,
+    );
+  }
+
+  async getTrashItems(storageId: string, userId: number): Promise<StorageItemDto[]> {
+    return this.send<StorageItemDto[], { storageId: string; userId: number }>('storage.getTrash', {
+      storageId,
+      userId,
+    });
   }
 
   async getStorageItemByToken(token: string): Promise<StorageItemWithChildrenDto> {

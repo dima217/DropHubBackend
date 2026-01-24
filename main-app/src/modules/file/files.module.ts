@@ -9,6 +9,11 @@ import { PermissionModule } from '@application/permission/permission.module';
 
 @Module({
   imports: [FileClientModule, AuthModule, PermissionModule],
-  controllers: [FileController, FileUploadController, FileDownloadController, FilePreviewController],
+  controllers: [
+    FileController,
+    FileUploadController,
+    FileDownloadController,
+    FilePreviewController,
+  ],
 })
 export class FileModule {}

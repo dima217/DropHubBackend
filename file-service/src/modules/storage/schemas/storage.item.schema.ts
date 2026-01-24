@@ -28,6 +28,9 @@ export class StorageItem {
 
   @Prop({ type: [String], default: [] })
   tags?: string[];
+
+  @Prop({ type: Date, default: null })
+  deletedAt?: Date | null;
 }
 
 export const StorageItemSchema = SchemaFactory.createForClass(StorageItem);

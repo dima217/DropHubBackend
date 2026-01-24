@@ -33,6 +33,21 @@ export class StorageController {
     return this.storageService.deleteStorageItem(data);
   }
 
+  @MessagePattern('storage.restoreItem')
+  async restoreItem(@Payload() data: { storageId: string; itemId: string; userId: number }) {
+    return this.storageService.restoreStorageItem(data);
+  }
+
+  @MessagePattern('storage.permanentDeleteItem')
+  async permanentDeleteItem(@Payload() data: { storageId: string; itemId: string; userId: number }) {
+    return this.storageService.permanentDeleteStorageItem(data);
+  }
+
+  @MessagePattern('storage.getTrash')
+  async getTrash(@Payload() data: { storageId: string; userId: number }) {
+    return this.storageService.getTrashItems(data.storageId);
+  }
+
   @MessagePattern('storage.getItemByToken')
   async getItemByToken(@Payload() data: { token: string }) {
     return this.storageService.getStorageItemByToken(data.token);
