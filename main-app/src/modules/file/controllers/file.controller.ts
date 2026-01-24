@@ -2,6 +2,7 @@ import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { FileClientService } from '../../file-client/services/file-client.service';
 import { DeleteFileDto } from '../dto/delete-file.dto';
 import { GetFilesDto } from '../dto/get-files.dto';
+import { ArchiveRoomDto } from '../dto/archive-room.dto';
 import type { RequestWithUser } from 'src/types/express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
@@ -29,5 +30,24 @@ export class FileController {
   async getFiles(@Body() dto: GetFilesDto, @Req() req: RequestWithUser) {
     const files = await this.fileClient.getFilesByRoom(dto.roomId, req.user.id);
     return files;
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'roomId')
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  @Post('archive-room')
+  async archiveRoom(@Body() dto: ArchiveRoomDto, @Req() req: RequestWithUser) {
+    return await this.fileClient.archiveRoom({
+      roomId: dto.roomId,
+      storageId: dto.storageId,
+      parentId: dto.parentId ?? null,
+      userId: req.user.id,
+      fileIds: dto.fileIds,
+    });
   }
 }

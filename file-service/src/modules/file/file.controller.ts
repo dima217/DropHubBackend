@@ -127,4 +127,18 @@ export class FileController {
   async getVideoStreamUrl(@Payload() data: { fileId: string; userId: number }) {
     return this.previewService.getVideoStreamUrl(data);
   }
+
+  @MessagePattern('file.archiveRoom')
+  async archiveRoom(
+    @Payload()
+    data: {
+      roomId: string;
+      storageId: string;
+      parentId: string | null;
+      userId: number;
+      fileIds?: string[];
+    },
+  ) {
+    return this.fileService.archiveRoom(data);
+  }
 }

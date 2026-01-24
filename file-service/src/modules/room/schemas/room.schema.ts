@@ -42,6 +42,12 @@ export class Room {
     uploadId?: string;
     status: FileUploadStatus;
   };
+
+  @Prop({ type: Boolean, default: false })
+  archived?: boolean;
+
+  @Prop({ type: Date })
+  archivedAt?: Date;
 }
 
 export const RoomSchema = SchemaFactory.createForClass(Room);

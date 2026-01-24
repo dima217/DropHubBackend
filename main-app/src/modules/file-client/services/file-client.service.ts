@@ -153,4 +153,17 @@ export class FileClientService {
       { fileId, userId },
     );
   }
+
+  async archiveRoom(payload: {
+    roomId: string;
+    storageId: string;
+    parentId: string | null;
+    userId: number;
+    fileIds?: string[];
+  }): Promise<{ success: boolean; roomId: string; folderId: string; archivedFilesCount: number }> {
+    return this.send<
+      { success: boolean; roomId: string; folderId: string; archivedFilesCount: number },
+      typeof payload
+    >('file.archiveRoom', payload);
+  }
 }
