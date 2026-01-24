@@ -1,32 +1,32 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { S3Service } from '../../../s3/s3.service';
 import { GetObjectCommandInput, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { FileService } from '../../file.service';
 import { S3_BUCKET_TOKEN } from '../../../s3/s3.tokens';
 import { CacheService } from '../../../../cache/cache.service';
 import { FileUploadStatus } from '../../../../constants/interfaces';
 import { z } from 'zod';
-
-interface PreviewParams {
-  fileId: string;
-  userId: number;
-}
+import type {
+  IPreviewService,
+  PreviewParams,
+  IFileService,
+} from '../../interfaces';
+import { FILE_SERVICE_TOKEN } from '../../interfaces';
 
 @Injectable()
-export class PreviewService {
+export class PreviewService implements IPreviewService {
   private readonly presignedUrlTTL = 300; // 5 minutes for preview
   private readonly cacheTTL = 290; // seconds (less than presigned URL TTL)
   private readonly urlSchema = z.string().url();
 
   constructor(
     private readonly s3Service: S3Service,
-    private readonly fileService: FileService,
+    @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
     private readonly cacheService: CacheService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string,
   ) {}

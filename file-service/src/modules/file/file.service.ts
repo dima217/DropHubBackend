@@ -19,13 +19,13 @@ import {
 import { S3Service } from "../s3/s3.service";
 import { S3_BUCKET_TOKEN } from "../s3/s3.tokens";
 import { CacheService } from "../../cache/cache.service";
-import { StorageService } from "../storage/storage.service";
+import type { IStorageService } from "../storage/interfaces";
+import { STORAGE_SERVICE_TOKEN } from "../storage/interfaces";
 import { z } from "zod";
-
-interface AuthenticatedGettingFilesByRoomParams {
-  roomId: string;
-  userId: number;
-}
+import {
+  IFileService,
+  AuthenticatedGettingFilesByRoomParams,
+} from "./interfaces/file-service.interface";
 
 const fileMetaSchema = z.object({
   _id: z.any(),
@@ -54,7 +54,7 @@ const roomFilesSchema = z.object({
 });
 
 @Injectable()
-export class FileService {
+export class FileService implements IFileService {
   private readonly FILE_META_TTL = 300; // 5 минут
   private readonly ROOM_FILES_TTL = 120; // 2 минуты
 
@@ -63,7 +63,7 @@ export class FileService {
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     private readonly s3Service: S3Service,
     private readonly cacheService: CacheService,
-    private readonly storageService: StorageService,
+    @Inject(STORAGE_SERVICE_TOKEN) private readonly storageService: IStorageService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string
   ) {}
 

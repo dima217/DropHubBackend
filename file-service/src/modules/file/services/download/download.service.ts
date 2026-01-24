@@ -1,14 +1,13 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { S3Service } from '../../../s3/s3.service';
 import { GetObjectCommandInput } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { FileService } from '../../file.service';
 import { S3_BUCKET_TOKEN } from '../../../s3/s3.tokens';
 import {
   PermissionClientService,
@@ -20,6 +19,11 @@ import { Readable } from 'stream';
 import { S3ReadStream } from '../../utils/s3-read-stream';
 import { CacheService } from '../../../../cache/cache.service';
 import { z } from 'zod';
+import type {
+  IDownloadService,
+  IFileService,
+} from '../../interfaces';
+import { FILE_SERVICE_TOKEN } from '../../interfaces';
 
 interface AuthenticatedDownloadParams {
   fileId: string;
@@ -31,7 +35,7 @@ interface DownloadByTokenParams {
 }
 
 @Injectable()
-export class DownloadService {
+export class DownloadService implements IDownloadService {
   private readonly presignedUrlTTL = 60; // seconds
   private readonly cacheTTL = 50; // seconds (less than presigned URL TTL to avoid expired URLs)
   private readonly urlSchema = z.string().url();
@@ -40,7 +44,7 @@ export class DownloadService {
     private readonly s3Service: S3Service,
     private readonly permissionClient: PermissionClientService,
     private readonly tokenService: TokenClientService,
-    private readonly fileService: FileService,
+    @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
     private readonly s3ReadStream: S3ReadStream,
     private readonly cacheService: CacheService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string,

@@ -7,6 +7,10 @@ import { UserStorage, UserStorageSchema } from './schemas/storage.schema';
 import { PermissionClientModule } from '../permission-client/permission-client.module';
 import { TokenClientModule } from '../token-client/token-client.module';
 import { StorageController } from './storage.controller';
+import {
+  STORAGE_SERVICE_TOKEN,
+  STORAGE_ITEM_SERVICE_TOKEN,
+} from './interfaces/storage-service.tokens';
 
 @Module({
   imports: [
@@ -18,8 +22,19 @@ import { StorageController } from './storage.controller';
     TokenClientModule,
   ],
   controllers: [StorageController],
-  providers: [StorageService, StorageItemService],
-  exports: [StorageService],
+  providers: [
+    {
+      provide: STORAGE_SERVICE_TOKEN,
+      useClass: StorageService,
+    },
+    {
+      provide: STORAGE_ITEM_SERVICE_TOKEN,
+      useClass: StorageItemService,
+    },
+    StorageService,
+    StorageItemService,
+  ],
+  exports: [STORAGE_SERVICE_TOKEN, STORAGE_ITEM_SERVICE_TOKEN, StorageService],
 })
 export class StorageModule {}
 

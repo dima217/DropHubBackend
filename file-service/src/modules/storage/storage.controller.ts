@@ -1,10 +1,13 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { StorageService } from './storage.service';
+import type { IStorageService } from './interfaces';
+import { STORAGE_SERVICE_TOKEN } from './interfaces';
 
 @Controller()
 export class StorageController {
-  constructor(private readonly storageService: StorageService) {}
+  constructor(
+    @Inject(STORAGE_SERVICE_TOKEN) private readonly storageService: IStorageService,
+  ) {}
 
   @MessagePattern('storage.create')
   async createStorage(@Payload() data: { userId: number }) {

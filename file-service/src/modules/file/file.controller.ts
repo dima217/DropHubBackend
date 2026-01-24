@@ -1,20 +1,32 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { FileService } from './file.service';
-import { UploadService } from './services/upload/upload.service';
-import { DownloadService } from './services/download/download.service';
-import { MultipartUploadService } from './services/upload/multipart.upload.service';
-import { PreviewService } from './services/preview/preview.service';
 import { UploadInitMultipartDto } from './dto/upload/upload-init-multipart.dto';
+import {
+  FILE_SERVICE_TOKEN,
+  UPLOAD_SERVICE_TOKEN,
+  DOWNLOAD_SERVICE_TOKEN,
+  MULTIPART_UPLOAD_SERVICE_TOKEN,
+  PREVIEW_SERVICE_TOKEN,
+} from './interfaces/file-service.tokens';
+import type {
+  IFileService,
+  IUploadService,
+  IDownloadService,
+  IMultipartUploadService,
+  IPreviewService,
+} from './interfaces';
 
 @Controller()
 export class FileController {
   constructor(
-    private readonly fileService: FileService,
-    private readonly uploadService: UploadService,
-    private readonly downloadService: DownloadService,
-    private readonly multipartUploadService: MultipartUploadService,
-    private readonly previewService: PreviewService,
+    @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
+    @Inject(UPLOAD_SERVICE_TOKEN) private readonly uploadService: IUploadService,
+    @Inject(DOWNLOAD_SERVICE_TOKEN)
+    private readonly downloadService: IDownloadService,
+    @Inject(MULTIPART_UPLOAD_SERVICE_TOKEN)
+    private readonly multipartUploadService: IMultipartUploadService,
+    @Inject(PREVIEW_SERVICE_TOKEN)
+    private readonly previewService: IPreviewService,
   ) {}
 
   @MessagePattern('file.create')

@@ -4,6 +4,7 @@ import { RoomService } from './room.service';
 import { Room, RoomSchema } from './schemas/room.schema';
 import { PermissionClientModule } from '../permission-client/permission-client.module';
 import { RoomController } from './room.controller';
+import { ROOM_SERVICE_TOKEN } from './interfaces';
 
 @Module({
   imports: [
@@ -11,8 +12,14 @@ import { RoomController } from './room.controller';
     PermissionClientModule,
   ],
   controllers: [RoomController],
-  providers: [RoomService],
-  exports: [RoomService],
+  providers: [
+    {
+      provide: ROOM_SERVICE_TOKEN,
+      useClass: RoomService,
+    },
+    RoomService,
+  ],
+  exports: [ROOM_SERVICE_TOKEN, RoomService],
 })
 export class RoomModule {}
 

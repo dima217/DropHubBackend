@@ -9,6 +9,7 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Room, RoomDocument } from './schemas/room.schema';
 import { PermissionClientService, AccessRole, ResourceType } from '../permission-client/permission-client.service';
+import { IRoomService } from './interfaces/room-service.interface';
 
 interface AuthenticationDeleteRoomParams {
   userId: number;
@@ -21,7 +22,7 @@ interface AuthenticationCreateRoomParams {
 }
 
 @Injectable()
-export class RoomService {
+export class RoomService implements IRoomService {
   constructor(
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     private readonly permissionClient: PermissionClientService,

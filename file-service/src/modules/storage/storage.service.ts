@@ -12,6 +12,10 @@ import { AccessRole, ResourceType } from '../permission-client/permission-client
 import { PermissionClientService } from '../permission-client/permission-client.service';
 import { StorageItem } from './schemas/storage.item.schema';
 import { TokenClientService } from '../token-client/token-client.service';
+import { IStorageService } from './interfaces/storage-service.interface';
+import type { IStorageItemService } from './interfaces';
+import { STORAGE_ITEM_SERVICE_TOKEN } from './interfaces';
+import { Inject } from '@nestjs/common';
 
 interface GetStorageItemsParams {
   storageId: string;
@@ -47,11 +51,11 @@ interface MoveStorageItemParams {
 }
 
 @Injectable()
-export class StorageService {
+export class StorageService implements IStorageService {
   constructor(
     @InjectModel('UserStorage') private readonly storageModel: Model<UserStorageDocument>,
     private readonly permissionClient: PermissionClientService,
-    private readonly storageItemService: StorageItemService,
+    @Inject(STORAGE_ITEM_SERVICE_TOKEN) private readonly storageItemService: IStorageItemService,
     private readonly tokenService: TokenClientService,
   ) {}
 

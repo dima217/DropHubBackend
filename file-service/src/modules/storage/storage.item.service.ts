@@ -2,9 +2,10 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { StorageItem } from './schemas/storage.item.schema';
+import { IStorageItemService } from './interfaces/storage-item-service.interface';
 
 @Injectable()
-export class StorageItemService {
+export class StorageItemService implements IStorageItemService {
   constructor(@InjectModel('StorageItem') private readonly itemModel: Model<StorageItem>) {}
 
   async getItemsByParent(parentId: string | null): Promise<StorageItem[]> {

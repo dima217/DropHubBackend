@@ -1,10 +1,11 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { RoomService } from './room.service';
+import type { IRoomService } from './interfaces';
+import { ROOM_SERVICE_TOKEN } from './interfaces';
 
 @Controller()
 export class RoomController {
-  constructor(private readonly roomService: RoomService) {}
+  constructor(@Inject(ROOM_SERVICE_TOKEN) private readonly roomService: IRoomService) {}
 
   @MessagePattern('room.create')
   async createRoom(@Payload() data: { userId: number; username?: string }) {

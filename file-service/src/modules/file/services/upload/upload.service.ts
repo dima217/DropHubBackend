@@ -8,9 +8,10 @@ import { S3Service } from "../../../s3/s3.service";
 import { S3_BUCKET_TOKEN } from "../../../s3/s3.tokens";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { FileService } from "../../file.service";
-import { StorageService } from "../../../storage/storage.service";
-import { RoomService } from "../../../room/room.service";
+import type { IStorageService } from "../../../storage/interfaces";
+import { STORAGE_SERVICE_TOKEN } from "../../../storage/interfaces";
+import type { IRoomService } from "../../../room/interfaces";
+import { ROOM_SERVICE_TOKEN } from "../../../room/interfaces";
 import {
   PermissionClientService,
   AccessRole,
@@ -18,15 +19,17 @@ import {
 } from "../../../permission-client/permission-client.service";
 import { TokenClientService } from "../../../token-client/token-client.service";
 import { UploadData } from "../../interfaces/file-request.interface";
+import type { IUploadService, IFileService } from "../../interfaces";
+import { FILE_SERVICE_TOKEN } from "../../interfaces";
 
 @Injectable()
-export class UploadService {
+export class UploadService implements IUploadService {
   constructor(
     private readonly s3Service: S3Service,
-    private readonly roomService: RoomService,
-    private readonly storageService: StorageService,
+    @Inject(ROOM_SERVICE_TOKEN) private readonly roomService: IRoomService,
+    @Inject(STORAGE_SERVICE_TOKEN) private readonly storageService: IStorageService,
     private readonly permissionClient: PermissionClientService,
-    private readonly fileService: FileService,
+    @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
     private readonly tokenService: TokenClientService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string
   ) {}

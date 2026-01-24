@@ -7,13 +7,18 @@ import { Room, RoomDocument } from "../../../room/schemas/room.schema";
 import { FileUploadStatus } from "../../../../constants/interfaces";
 import { UploadCompleteDto } from "../../dto/upload/upload-complete.dto";
 import { UploadInitMultipartDto } from "../../dto/upload/upload-init-multipart.dto";
-import { FileService } from "../../file.service";
+import type {
+  IMultipartUploadService,
+  IFileService,
+} from "../../interfaces";
+import { FILE_SERVICE_TOKEN } from "../../interfaces";
+import { Inject } from "@nestjs/common";
 
 @Injectable()
-export class MultipartUploadService {
+export class MultipartUploadService implements IMultipartUploadService {
   constructor(
     private readonly s3Stream: S3WriteStream,
-    private readonly fileService: FileService,
+    @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
     @InjectModel(File.name) private readonly fileModel: Model<FileDocument>,
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>
   ) {}

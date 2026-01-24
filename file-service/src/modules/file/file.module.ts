@@ -16,6 +16,13 @@ import { RoomModule } from '../room/room.module';
 import { S3ReadStream } from './utils/s3-read-stream';
 import { S3WriteStream } from './utils/s3-write-stream';
 import { CacheModule } from '../../cache/cache.module';
+import {
+  FILE_SERVICE_TOKEN,
+  UPLOAD_SERVICE_TOKEN,
+  DOWNLOAD_SERVICE_TOKEN,
+  MULTIPART_UPLOAD_SERVICE_TOKEN,
+  PREVIEW_SERVICE_TOKEN,
+} from './interfaces/file-service.tokens';
 
 @Module({
   imports: [
@@ -32,6 +39,26 @@ import { CacheModule } from '../../cache/cache.module';
   ],
   controllers: [FileController],
   providers: [
+    {
+      provide: FILE_SERVICE_TOKEN,
+      useClass: FileService,
+    },
+    {
+      provide: UPLOAD_SERVICE_TOKEN,
+      useClass: UploadService,
+    },
+    {
+      provide: DOWNLOAD_SERVICE_TOKEN,
+      useClass: DownloadService,
+    },
+    {
+      provide: MULTIPART_UPLOAD_SERVICE_TOKEN,
+      useClass: MultipartUploadService,
+    },
+    {
+      provide: PREVIEW_SERVICE_TOKEN,
+      useClass: PreviewService,
+    },
     FileService,
     UploadService,
     DownloadService,
@@ -40,7 +67,18 @@ import { CacheModule } from '../../cache/cache.module';
     S3ReadStream,
     S3WriteStream,
   ],
-  exports: [FileService, UploadService, DownloadService, MultipartUploadService, PreviewService],
+  exports: [
+    FILE_SERVICE_TOKEN,
+    UPLOAD_SERVICE_TOKEN,
+    DOWNLOAD_SERVICE_TOKEN,
+    MULTIPART_UPLOAD_SERVICE_TOKEN,
+    PREVIEW_SERVICE_TOKEN,
+    FileService,
+    UploadService,
+    DownloadService,
+    MultipartUploadService,
+    PreviewService,
+  ],
 })
 export class FileModule {}
 
