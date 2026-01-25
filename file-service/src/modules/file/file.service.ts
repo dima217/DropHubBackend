@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   Inject,
+  forwardRef,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
@@ -63,7 +64,7 @@ export class FileService implements IFileService {
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     private readonly s3Service: S3Service,
     private readonly cacheService: CacheService,
-    @Inject(STORAGE_SERVICE_TOKEN) private readonly storageService: IStorageService,
+    @Inject(forwardRef(() => STORAGE_SERVICE_TOKEN)) private readonly storageService: IStorageService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string
   ) {}
 

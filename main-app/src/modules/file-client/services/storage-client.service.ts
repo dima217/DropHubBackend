@@ -27,6 +27,20 @@ export interface MoveStorageItemPayload {
   userId: number;
 }
 
+export interface RenameStorageItemPayload {
+  storageId: string;
+  itemId: string;
+  newName: string;
+  userId: number;
+}
+
+export interface CopyStorageItemPayload {
+  storageId: string;
+  itemId: string;
+  targetParentId: string | null;
+  userId: number;
+}
+
 @Injectable()
 export class StorageClientService {
   constructor(@Inject('FILE_SERVICE') private readonly fileClient: ClientProxy) {}
@@ -129,5 +143,13 @@ export class StorageClientService {
     offset?: number;
   }): Promise<Array<StorageItemDto>> {
     return this.send<Array<StorageItemDto>, typeof payload>('storage.searchItems', payload);
+  }
+
+  async renameStorageItem(data: RenameStorageItemPayload): Promise<StorageItemDto> {
+    return this.send<StorageItemDto, RenameStorageItemPayload>('storage.renameItem', data);
+  }
+
+  async copyStorageItem(data: CopyStorageItemPayload): Promise<StorageItemDto> {
+    return this.send<StorageItemDto, CopyStorageItemPayload>('storage.copyItem', data);
   }
 }

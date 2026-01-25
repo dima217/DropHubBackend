@@ -1,7 +1,7 @@
 import { StorageItem } from '../schemas/storage.item.schema';
 
 export interface IStorageItemService {
-  getItemsByParent(parentId: string | null): Promise<StorageItem[]>;
+  getItemsByParent(parentId: string | null, storageId?: string): Promise<StorageItem[]>;
   getItemById(itemId: string): Promise<StorageItem>;
   createItem(
     name: string,
@@ -27,6 +27,14 @@ export interface IStorageItemService {
     offset?: number;
   }): Promise<StorageItem[]>;
   moveItem(itemId: string, newParentId: string | null): Promise<StorageItem>;
+  renameItem(itemId: string, newName: string): Promise<StorageItem>;
+  copyItem(
+    itemId: string,
+    targetParentId: string | null,
+    userId: string,
+    storageId: string,
+  ): Promise<StorageItem>;
+  getChildrenCount(itemId: string): Promise<{ total: number; files: number; folders: number }>;
 }
 
 

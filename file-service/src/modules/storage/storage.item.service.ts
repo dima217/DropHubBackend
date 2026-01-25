@@ -8,16 +8,33 @@ import { IStorageItemService } from './interfaces/storage-item-service.interface
 export class StorageItemService implements IStorageItemService {
   constructor(@InjectModel('StorageItem') private readonly itemModel: Model<StorageItem>) {}
 
-  async getItemsByParent(parentId: string | null): Promise<StorageItem[]> {
-    const query: any = { parentId: parentId, deletedAt: null };
+  async getItemsByParent(parentId: string | null, storageId?: string): Promise<StorageItem[]> {
+    const query: any = { deletedAt: null };
 
     if (parentId === null) {
       query.parentId = null;
+      if (storageId) {
+        query.storageId = storageId;
+      }
     } else {
       query.parentId = new Types.ObjectId(parentId);
     }
 
     return this.itemModel.find(query).lean().exec();
+  }
+
+  async getChildrenCount(itemId: string): Promise<{ total: number; files: number; folders: number }> {
+    const children = await this.itemModel
+      .find({ parentId: new Types.ObjectId(itemId), deletedAt: null })
+      .select('isDirectory')
+      .lean()
+      .exec();
+
+    const total = children.length;
+    const files = children.filter((child) => !child.isDirectory).length;
+    const folders = children.filter((child) => child.isDirectory).length;
+
+    return { total, files, folders };
   }
 
   async getItemById(itemId: string): Promise<StorageItem> {
@@ -279,6 +296,154 @@ export class StorageItemService implements IStorageItemService {
 
     item.parentId = newParentId ? new Types.ObjectId(newParentId) : null;
     return item.save();
+  }
+
+  async renameItem(itemId: string, newName: string): Promise<StorageItem> {
+    if (!newName || newName.trim().length === 0) {
+      throw new BadRequestException('Item name cannot be empty.');
+    }
+
+    const item = await this.itemModel.findById(itemId);
+    if (!item) {
+      throw new NotFoundException('Item not found.');
+    }
+
+    if (item.deletedAt) {
+      throw new BadRequestException('Cannot rename deleted item. Restore it first.');
+    }
+
+    // Проверяем, нет ли уже элемента с таким именем в той же папке
+    const existingItem = await this.itemModel.findOne({
+      parentId: item.parentId,
+      name: newName.trim(),
+      storageId: item.storageId,
+      deletedAt: null,
+      _id: { $ne: item._id },
+    });
+
+    if (existingItem) {
+      throw new BadRequestException('An item with this name already exists in this folder.');
+    }
+
+    item.name = newName.trim();
+    return item.save();
+  }
+
+  async copyItem(
+    itemId: string,
+    targetParentId: string | null,
+    userId: string,
+    storageId: string,
+  ): Promise<StorageItem> {
+    const sourceItem = await this.itemModel.findById(itemId).lean();
+    if (!sourceItem) {
+      throw new NotFoundException('Source item not found.');
+    }
+
+    if (sourceItem.deletedAt) {
+      throw new BadRequestException('Cannot copy deleted item. Restore it first.');
+    }
+
+    if (sourceItem.storageId !== storageId) {
+      throw new BadRequestException('Cannot copy item to another storage.');
+    }
+
+    // Проверяем target parent
+    if (targetParentId !== null) {
+      const targetParent = await this.itemModel.findById(targetParentId);
+      if (!targetParent) {
+        throw new NotFoundException('Target folder not found.');
+      }
+      if (!targetParent.isDirectory) {
+        throw new BadRequestException('Target must be a folder.');
+      }
+      if (targetParent.deletedAt) {
+        throw new BadRequestException('Cannot copy item to deleted folder.');
+      }
+      if (targetParent.storageId !== storageId) {
+        throw new BadRequestException('Cannot copy item to another storage.');
+      }
+    }
+
+    // Генерируем имя для копии
+    const baseName = sourceItem.name;
+    let copyName = `${baseName} (copy)`;
+    let counter = 1;
+
+    // Проверяем уникальность имени
+    while (
+      await this.itemModel.findOne({
+        parentId: targetParentId ? new Types.ObjectId(targetParentId) : null,
+        name: copyName,
+        storageId: storageId,
+        deletedAt: null,
+      })
+    ) {
+      copyName = `${baseName} (copy ${counter})`;
+      counter++;
+    }
+
+    // Создаем копию элемента
+    const copiedItem = new this.itemModel({
+      userId,
+      name: copyName,
+      isDirectory: sourceItem.isDirectory,
+      parentId: targetParentId ? new Types.ObjectId(targetParentId) : null,
+      fileId: sourceItem.fileId ? new Types.ObjectId(sourceItem.fileId) : undefined,
+      storageId: storageId,
+      creatorId: sourceItem.creatorId || parseInt(userId, 10),
+      tags: sourceItem.tags ? [...sourceItem.tags] : [],
+    });
+
+    const savedItem = await copiedItem.save();
+
+    // Если это директория, рекурсивно копируем все дочерние элементы
+    if (sourceItem.isDirectory) {
+      const copyChildren = async (sourceParentId: Types.ObjectId, targetParentId: Types.ObjectId) => {
+        const children = await this.itemModel.find({ parentId: sourceParentId, deletedAt: null }).lean();
+        
+        for (const child of children) {
+          const childCopyName = child.name;
+          let finalChildName = childCopyName;
+          let childCounter = 1;
+
+          // Проверяем уникальность имени дочернего элемента
+          while (
+            await this.itemModel.findOne({
+              parentId: targetParentId,
+              name: finalChildName,
+              storageId: storageId,
+              deletedAt: null,
+            })
+          ) {
+            finalChildName = `${childCopyName} (${childCounter})`;
+            childCounter++;
+          }
+
+          const childCopy = new this.itemModel({
+            userId,
+            name: finalChildName,
+            isDirectory: child.isDirectory,
+            parentId: targetParentId,
+            fileId: child.fileId ? new Types.ObjectId(child.fileId) : undefined,
+            storageId: storageId,
+            creatorId: child.creatorId || parseInt(userId, 10),
+            tags: child.tags ? [...child.tags] : [],
+          });
+
+          const savedChild = await childCopy.save();
+
+          // Рекурсивно копируем дочерние элементы, если это директория
+          if (child.isDirectory) {
+            await copyChildren(child._id, savedChild._id);
+          }
+        }
+      };
+
+      await copyChildren(sourceItem._id, savedItem._id);
+    }
+
+    return savedItem;
   }
 }
 

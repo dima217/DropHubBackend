@@ -99,4 +99,30 @@ export class StorageController {
   ) {
     return this.storageService.searchStorageItems(data);
   }
+
+  @MessagePattern('storage.renameItem')
+  async renameItem(
+    @Payload()
+    data: {
+      storageId: string;
+      itemId: string;
+      newName: string;
+      userId: number;
+    },
+  ) {
+    return this.storageService.renameStorageItem(data);
+  }
+
+  @MessagePattern('storage.copyItem')
+  async copyItem(
+    @Payload()
+    data: {
+      storageId: string;
+      itemId: string;
+      targetParentId: string | null;
+      userId: number;
+    },
+  ) {
+    return this.storageService.copyStorageItem(data);
+  }
 }

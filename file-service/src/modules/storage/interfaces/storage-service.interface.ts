@@ -31,12 +31,12 @@ export interface IStorageService {
   >;
   getStoragesByUserId(userId: number): Promise<any[]>;
   getStorageItemByToken(token: string): Promise<StorageItem & { children?: StorageItem[] }>;
-  getFullStorageStructure(storageId: string, userId: number): Promise<StorageItem[]>;
+  getFullStorageStructure(storageId: string, userId: number): Promise<any[]>;
   getStorageStructure(params: {
     storageId: string;
     parentId: string | null;
     userId: number;
-  }): Promise<StorageItem[]>;
+  }): Promise<any[]>;
   deleteStorageItem(params: {
     storageId: string;
     itemId: string;
@@ -75,6 +75,18 @@ export interface IStorageService {
     limit?: number;
     offset?: number;
   }): Promise<any[]>;
+  renameStorageItem(params: {
+    storageId: string;
+    itemId: string;
+    newName: string;
+    userId: number;
+  }): Promise<any>;
+  copyStorageItem(params: {
+    storageId: string;
+    itemId: string;
+    targetParentId: string | null;
+    userId: number;
+  }): Promise<any>;
 }
 
 

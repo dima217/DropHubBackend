@@ -35,16 +35,20 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const swaggerConfig = configService.get('swagger');
+  const environment = configService.get<string>('environment');
 
-  if (swaggerConfig?.enable) {
+  // Enable Swagger if explicitly enabled or in development mode
+  const shouldEnableSwagger = swaggerConfig?.enable === true || environment === 'development';
+
+  if (shouldEnableSwagger) {
     const swaggerOptions = new DocumentBuilder()
-      .setTitle(swaggerConfig.title || 'API')
-      .setDescription(swaggerConfig.description || 'API Documentation')
-      .setVersion(swaggerConfig.version || '1.0')
+      .setTitle(swaggerConfig?.title || 'API')
+      .setDescription(swaggerConfig?.description || 'API Documentation')
+      .setVersion(swaggerConfig?.version || '1.0')
       .build();
 
     const document = SwaggerModule.createDocument(app, swaggerOptions);
-    SwaggerModule.setup(swaggerConfig.path || 'api', app, document);
+    SwaggerModule.setup(swaggerConfig?.path || '/api-docs', app, document);
   }
   app.enableCors();
   const port = configService.get<number>('port') || 3000;

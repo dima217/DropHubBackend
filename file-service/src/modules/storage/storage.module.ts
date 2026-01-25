@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { StorageService } from './storage.service';
 import { StorageItemService } from './storage.item.service';
@@ -7,6 +7,7 @@ import { UserStorage, UserStorageSchema } from './schemas/storage.schema';
 import { PermissionClientModule } from '../permission-client/permission-client.module';
 import { TokenClientModule } from '../token-client/token-client.module';
 import { StorageController } from './storage.controller';
+import { FileModule } from '../file/file.module';
 import {
   STORAGE_SERVICE_TOKEN,
   STORAGE_ITEM_SERVICE_TOKEN,
@@ -20,6 +21,7 @@ import {
     ]),
     PermissionClientModule,
     TokenClientModule,
+    forwardRef(() => FileModule),
   ],
   controllers: [StorageController],
   providers: [
