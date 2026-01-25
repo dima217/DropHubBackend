@@ -18,6 +18,10 @@ import { STORAGE_ITEM_SERVICE_TOKEN } from './interfaces';
 import { Inject, forwardRef } from '@nestjs/common';
 import type { IFileService } from '../file/interfaces';
 import { FILE_SERVICE_TOKEN } from '../file/interfaces';
+import {
+  StorageItemMapper,
+  type EnrichedStorageItemDto,
+} from './mappers/storage-item.mapper';
 
 interface GetStorageItemsParams {
   storageId: string;
@@ -67,10 +71,7 @@ export class StorageService implements IStorageService {
       createdAt: Date.now(),
     });
     const storageId = storage._id.toString();
-    
-    // Note: Permission creation should be handled by main app
-    
-    // Маппим в DTO формат
+
     return {
       id: storageId,
       items: [],
@@ -165,55 +166,22 @@ export class StorageService implements IStorageService {
     return responseItem;
   }
 
-  private async enrichItemsWithMetadata(items: StorageItem[]): Promise<any[]> {
+  private async enrichItemsWithMetadata(items: StorageItem[]): Promise<EnrichedStorageItemDto[]> {
     const enrichedItems = await Promise.all(
-      items.map(async (item) => {
-        const baseItem = {
-          id: item._id.toString(),
-          userId: item.userId,
-          name: item.name,
-          storageId: item.storageId,
-          isDirectory: item.isDirectory,
-          parentId: item.parentId?.toString() || null,
-          fileId: item.fileId?.toString() || null,
-          creatorId: item.creatorId,
-          tags: item.tags || [],
-          deletedAt: item.deletedAt,
-        };
-
+      items.map(async (item): Promise<EnrichedStorageItemDto> => {
         if (item.isDirectory) {
-          // Для папок получаем статистику о детях
           const childrenCount = await this.storageItemService.getChildrenCount(item._id.toString());
-          return {
-            ...baseItem,
-            childrenCount: childrenCount.total,
-            filesCount: childrenCount.files,
-            foldersCount: childrenCount.folders,
-          };
+          return StorageItemMapper.toDirectoryDto(item, childrenCount);
         } else {
-          // Для файлов получаем мета-информацию
           if (item.fileId) {
             try {
               const fileMeta = await this.fileService.getFileById(item.fileId.toString());
-              return {
-                ...baseItem,
-                fileMeta: {
-                  _id: fileMeta._id?.toString() || fileMeta._id,
-                  originalName: fileMeta.originalName,
-                  storedName: fileMeta.storedName,
-                  size: fileMeta.size,
-                  mimeType: fileMeta.mimeType,
-                  uploadTime: fileMeta.uploadTime,
-                  downloadCount: fileMeta.downloadCount,
-                  creatorId: fileMeta.creatorId,
-                },
-              };
+              return StorageItemMapper.toFileDto(item, fileMeta);
             } catch (error) {
-              // Если файл не найден, возвращаем item без мета-информации
-              return baseItem;
+              return StorageItemMapper.toFileDto(item);
             }
           }
-          return baseItem;
+          return StorageItemMapper.toFileDto(item);
         }
       }),
     );
@@ -221,7 +189,7 @@ export class StorageService implements IStorageService {
     return enrichedItems;
   }
 
-  async getFullStorageStructure(storageId: string, userId: number): Promise<any[]> {
+  async getFullStorageStructure(storageId: string, userId: number): Promise<EnrichedStorageItemDto[]> {
     // Permission check is performed in main-app before calling this service
 
     const items = await this.storageItemService.getAllItemsByStorageId(storageId);
@@ -229,17 +197,13 @@ export class StorageService implements IStorageService {
     return this.enrichItemsWithMetadata(items);
   }
 
-  async getStorageStructure(params: GetStorageItemsParams): Promise<any[]> {
-    // Permission check is performed in main-app before calling this service
-    // Если parentId не указан (null), получаем корень хранилища
+  async getStorageStructure(params: GetStorageItemsParams): Promise<EnrichedStorageItemDto[]> {
     const items = await this.storageItemService.getItemsByParent(params.parentId, params.storageId);
 
     return this.enrichItemsWithMetadata(items);
   }
 
   async deleteStorageItem(params: DeleteStorageItemParams) {
-    // Permission check is performed in main-app before calling this service
-
     const item = await this.storageItemService.getItemById(params.itemId);
 
     if (item.storageId !== params.storageId) {
@@ -277,20 +241,7 @@ export class StorageService implements IStorageService {
 
   async getTrashItems(storageId: string) {
     const items = await this.storageItemService.getTrashItems(storageId);
-
-    // Маппим в DTO формат
-    return items.map((item) => ({
-      id: item._id.toString(),
-      userId: item.userId,
-      name: item.name,
-      storageId: item.storageId,
-      isDirectory: item.isDirectory,
-      parentId: item.parentId?.toString() || null,
-      fileId: item.fileId?.toString() || null,
-      creatorId: item.creatorId,
-      tags: item.tags || [],
-      deletedAt: item.deletedAt,
-    }));
+    return items.map((item) => StorageItemMapper.toBaseDto(item));
   }
 
   async updateStorageItemTags(storageId: string, itemId: string, tags: string[]) {
@@ -303,20 +254,7 @@ export class StorageService implements IStorageService {
     }
 
     const updatedItem = await this.storageItemService.updateItemTags(itemId, tags);
-
-    // Маппим в DTO формат
-    return {
-      id: updatedItem._id.toString(),
-      userId: updatedItem.userId,
-      name: updatedItem.name,
-      storageId: updatedItem.storageId,
-      isDirectory: updatedItem.isDirectory,
-      parentId: updatedItem.parentId?.toString() || null,
-      fileId: updatedItem.fileId?.toString() || null,
-      creatorId: updatedItem.creatorId,
-      tags: updatedItem.tags || [],
-      deletedAt: updatedItem.deletedAt,
-    };
+    return StorageItemMapper.toBaseDto(updatedItem);
   }
 
   async moveStorageItem(params: MoveStorageItemParams) {
@@ -327,20 +265,7 @@ export class StorageService implements IStorageService {
     }
 
     const updatedItem = await this.storageItemService.moveItem(params.itemId, params.newParentId);
-
-    // Маппим в DTO формат
-    return {
-      id: updatedItem._id.toString(),
-      userId: updatedItem.userId,
-      name: updatedItem.name,
-      storageId: updatedItem.storageId,
-      isDirectory: updatedItem.isDirectory,
-      parentId: updatedItem.parentId?.toString() || null,
-      fileId: updatedItem.fileId?.toString() || null,
-      creatorId: updatedItem.creatorId,
-      tags: updatedItem.tags || [],
-      deletedAt: updatedItem.deletedAt,
-    };
+    return StorageItemMapper.toBaseDto(updatedItem);
   }
 
   async searchStorageItems(params: {
@@ -354,19 +279,7 @@ export class StorageService implements IStorageService {
     // Permission check is performed in main-app before calling this service
 
     const items = await this.storageItemService.searchItems(params);
-
-    // Маппим в DTO формат
-    return items.map((item) => ({
-      id: item._id.toString(),
-      userId: item.userId,
-      name: item.name,
-      storageId: item.storageId,
-      isDirectory: item.isDirectory,
-      parentId: item.parentId?.toString() || null,
-      fileId: item.fileId?.toString() || null,
-      creatorId: item.creatorId,
-      tags: item.tags || [],
-    }));
+    return items.map((item) => StorageItemMapper.toBaseDto(item));
   }
 
   async renameStorageItem(params: {
@@ -382,20 +295,7 @@ export class StorageService implements IStorageService {
     }
 
     const updatedItem = await this.storageItemService.renameItem(params.itemId, params.newName);
-
-    // Маппим в DTO формат
-    return {
-      id: updatedItem._id.toString(),
-      userId: updatedItem.userId,
-      name: updatedItem.name,
-      storageId: updatedItem.storageId,
-      isDirectory: updatedItem.isDirectory,
-      parentId: updatedItem.parentId?.toString() || null,
-      fileId: updatedItem.fileId?.toString() || null,
-      creatorId: updatedItem.creatorId,
-      tags: updatedItem.tags || [],
-      deletedAt: updatedItem.deletedAt,
-    };
+    return StorageItemMapper.toBaseDto(updatedItem);
   }
 
   async copyStorageItem(params: {
@@ -416,20 +316,7 @@ export class StorageService implements IStorageService {
       params.userId.toString(),
       params.storageId,
     );
-
-    // Маппим в DTO формат
-    return {
-      id: copiedItem._id.toString(),
-      userId: copiedItem.userId,
-      name: copiedItem.name,
-      storageId: copiedItem.storageId,
-      isDirectory: copiedItem.isDirectory,
-      parentId: copiedItem.parentId?.toString() || null,
-      fileId: copiedItem.fileId?.toString() || null,
-      creatorId: copiedItem.creatorId,
-      tags: copiedItem.tags || [],
-      deletedAt: copiedItem.deletedAt,
-    };
+    return StorageItemMapper.toBaseDto(copiedItem);
   }
 }
 

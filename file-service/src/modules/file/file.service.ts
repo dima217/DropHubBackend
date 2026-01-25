@@ -56,8 +56,8 @@ const roomFilesSchema = z.object({
 
 @Injectable()
 export class FileService implements IFileService {
-  private readonly FILE_META_TTL = 300; // 5 минут
-  private readonly ROOM_FILES_TTL = 120; // 2 минуты
+  private readonly FILE_META_TTL = 300; 
+  private readonly ROOM_FILES_TTL = 120; 
 
   constructor(
     @InjectModel(File.name) private readonly fileModel: Model<FileDocument>,
