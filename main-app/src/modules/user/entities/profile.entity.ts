@@ -11,10 +11,6 @@ export class Profile {
   @Column()
   firstName: string;
 
-  @ApiProperty({ description: 'User display password' })
-  @Column()
-  lastName: string;
-
   @Column({ type: 'varchar', nullable: true })
   avatarUrl: string | null;
 

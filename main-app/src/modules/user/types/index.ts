@@ -16,7 +16,6 @@ export interface LoginUserPayload {
   email: string;
   profile: {
     firstName: string;
-    lastName: string;
     avatarUrl: string;
   };
 }

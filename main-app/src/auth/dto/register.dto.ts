@@ -6,7 +6,11 @@ export class RegisterUserDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ description: 'User password (optional for OAuth registration)', required: false, example: 'SecurePassword123!' })
+  @ApiProperty({
+    description: 'User password (optional for OAuth registration)',
+    required: false,
+    example: 'SecurePassword123!',
+  })
   @IsOptional()
   @IsString()
   password: string;
@@ -16,12 +20,7 @@ export class RegisterUserDto {
   @IsNotEmpty()
   firstName: string;
 
-  @ApiProperty({ description: 'User last name', example: 'Doe' })
   @IsString()
-  @IsNotEmpty()
-  lastName: string;
-
-  /* @IsString()
   @IsOptional()
-  avatarUrl?: string; */
+  avatarUrl?: string;
 }

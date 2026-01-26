@@ -6,7 +6,10 @@ export class AddFavoriteStorageItemDto {
   @IsString()
   storageId: string;
 
-  @ApiProperty({ description: 'Storage item ID to add to favorites', example: '507f1f77bcf86cd799439011' })
+  @ApiProperty({
+    description: 'Storage item ID to add to favorites',
+    example: '507f1f77bcf86cd799439011',
+  })
   @IsString()
   itemId: string;
 }

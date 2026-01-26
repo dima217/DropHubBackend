@@ -15,6 +15,7 @@ import { PasswordService } from './services/password.service';
 import { WsJwtAuthGuard } from './guards/ws-jwt-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-guard';
 import { RefreshTokenGuard } from './guards/refresh-token-guard';
+import { FileClientModule } from '@application/file-client';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RefreshTokenGuard } from './guards/refresh-token-guard';
       }),
       inject: [ConfigService],
     }),
+    FileClientModule,
   ],
   providers: [
     AuthService,

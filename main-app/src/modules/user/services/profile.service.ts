@@ -48,7 +48,7 @@ export class ProfileService {
     } */
 
     if (dto.firstName) profile.firstName = dto.firstName;
-    if (dto.lastName) profile.lastName = dto.lastName;
+    if (dto.avatarUrl) profile.avatarUrl = dto.avatarUrl;
 
     return this.profileRepository.save(profile);
   }

@@ -234,7 +234,6 @@ export class RoomService {
       email: string | null;
       profile: {
         firstName: string;
-        lastName: string;
         avatarUrl: string | null;
       } | null;
     }>;

@@ -27,8 +27,8 @@ export class UploadService implements IUploadService {
   constructor(
     private readonly s3Service: S3Service,
     @Inject(ROOM_SERVICE_TOKEN) private readonly roomService: IRoomService,
-    @Inject(STORAGE_SERVICE_TOKEN) private readonly storageService: IStorageService,
-    private readonly permissionClient: PermissionClientService,
+    @Inject(STORAGE_SERVICE_TOKEN)
+    private readonly storageService: IStorageService,
     @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
     private readonly tokenService: TokenClientService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string
@@ -119,7 +119,6 @@ export class UploadService implements IUploadService {
       fileUploadMeta._id.toString()
     );
 
-    // Инвалидация кеша комнаты при добавлении файла
     await this.fileService.invalidateRoomCache(resourceId);
 
     return { url };

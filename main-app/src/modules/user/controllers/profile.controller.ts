@@ -14,7 +14,8 @@ export class ProfileController {
   @Post('/update')
   @ApiOperation({
     summary: 'Update user profile',
-    description: 'Updates the authenticated user profile information (first name, last name, avatar URL).',
+    description:
+      'Updates the authenticated user profile information (first name, last name, avatar URL).',
   })
   @ApiBody({ type: UserUpdateProfileDTO })
   @ApiResponse({
@@ -25,7 +26,6 @@ export class ProfileController {
       properties: {
         id: { type: 'number', example: 1 },
         firstName: { type: 'string', example: 'John' },
-        lastName: { type: 'string', example: 'Doe' },
         avatarUrl: { type: 'string', example: 'https://example.com/avatar.jpg' },
       },
     },

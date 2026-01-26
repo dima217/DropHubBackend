@@ -179,7 +179,6 @@ export class CommentsService {
         profile: comment.author.profile
           ? {
               firstName: comment.author.profile.firstName,
-              lastName: comment.author.profile.lastName,
               avatarUrl: comment.author.profile.avatarUrl,
             }
           : null,

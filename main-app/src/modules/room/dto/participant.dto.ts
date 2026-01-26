@@ -5,9 +5,6 @@ class ParticipantProfileDto {
   @ApiProperty({ example: 'John' })
   firstName: string;
 
-  @ApiProperty({ example: 'Doe' })
-  lastName: string;
-
   @ApiProperty({ example: 'https://cdn.example.com/avatar.png', nullable: true })
   avatarUrl: string | null;
 }

@@ -7,12 +7,12 @@ export class UserUpdateProfileDTO {
   @IsString()
   firstName?: string;
 
-  @ApiProperty({ description: 'User last name', required: false, example: 'Doe' })
-  @IsOptional()
-  @IsString()
-  lastName?: string;
-
-  @ApiProperty({ description: 'URL to user avatar image', required: false, example: 'https://example.com/avatar.jpg' })
+  @ApiProperty({
+    description:
+      'Key of the user avatar in S3/MinIO. The frontend should upload the file using this key to the storage service.',
+    required: false,
+    example: 'uploads/avatars/1679445678901-avatar.png',
+  })
   @IsOptional()
   @IsString()
   avatarUrl?: string;

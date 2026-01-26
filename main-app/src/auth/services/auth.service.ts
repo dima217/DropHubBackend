@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import { DataSource } from 'typeorm';
 import { ProfileService } from 'src/modules/user/services/profile.service';
 import { TokenService } from './token.service';
+import { AvatarClientService } from '@application/file-client/services/auth/avatar-client.service';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +17,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly profileService: ProfileService,
     private readonly tokenService: TokenService,
+    private readonly avatarService: AvatarClientService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -77,12 +79,7 @@ export class AuthService {
     };
   }
 
-  async registerUser(dto: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-  }) {
+  async registerUser(dto: { email: string; password: string; firstName: string }) {
     const userData = {
       ...dto,
       password: dto.password,
@@ -95,6 +92,11 @@ export class AuthService {
 
     const user = await this.createUserWithProfile(userData);
 
+    const { url, key } = await this.avatarService.getUploadUrl({
+      userId: user.id.toString(),
+      contentType: 'image/png',
+    });
+
     const accessToken = this.tokenService.generateAccessToken(user.id);
     const refreshToken = this.tokenService.generateRefreshToken(user.id);
     await this.usersService.updateRefreshToken(user.id, refreshToken);
@@ -102,15 +104,12 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
+      avatarKey: key,
+      uploadUrl: url,
     };
   }
 
-  async findOrCreateUser(dto: {
-    email: string;
-    firstName: string;
-    lastName: string;
-    picture?: string;
-  }) {
+  async findOrCreateUser(dto: { email: string; firstName: string; picture?: string }) {
     const userData = {
       ...dto,
       role: UserRole.USER,
@@ -132,15 +131,14 @@ export class AuthService {
     email: string;
     password?: string;
     firstName: string;
-    lastName: string;
     role: UserRole;
+    avatarUrl?: string;
     isOAuthUser: boolean;
   }): Promise<User> {
     return this.dataSource.transaction(async (manager) => {
       const profile = await this.profileService.createProfileTransactional(
         {
           firstName: params.firstName,
-          lastName: params.lastName,
           avatarUrl: null,
         },
         manager,

@@ -31,12 +31,14 @@ export class AuthController {
   @UseGuards(LocalGuard)
   @ApiOperation({
     summary: 'User login',
-    description: 'Authenticates a user with email and password. Returns access token and refresh token in cookies and response body.',
+    description:
+      'Authenticates a user with email and password. Returns access token and refresh token in cookies and response body.',
   })
   @ApiBody({ type: AuthPayloadDto })
   @ApiResponse({
     status: 200,
-    description: 'Login successful. Returns access token and user profile. Refresh token is set in HTTP-only cookie.',
+    description:
+      'Login successful. Returns access token and user profile. Refresh token is set in HTTP-only cookie.',
     schema: {
       type: 'object',
       properties: {
@@ -66,12 +68,14 @@ export class AuthController {
   @Post('sign-up')
   @ApiOperation({
     summary: 'User registration',
-    description: 'Registers a new user account. Password is optional if using OAuth. Returns access token and refresh token.',
+    description:
+      'Registers a new user account. Password is optional if using OAuth. Returns access token and refresh token.',
   })
   @ApiBody({ type: RegisterUserDto })
   @ApiResponse({
     status: 201,
-    description: 'User registered successfully. Returns access token and refresh token in cookies and response body.',
+    description:
+      'User registered successfully. Returns access token and refresh token in cookies and response body.',
     schema: {
       type: 'object',
       properties: {
@@ -95,11 +99,13 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   @ApiOperation({
     summary: 'Refresh access token',
-    description: 'Generates a new access token using a valid refresh token. Refresh token can be provided in cookie or Authorization header.',
+    description:
+      'Generates a new access token using a valid refresh token. Refresh token can be provided in cookie or Authorization header.',
   })
   @ApiResponse({
     status: 200,
-    description: 'New access token generated successfully. For browser requests, only accessToken is returned. For API requests, both tokens are returned.',
+    description:
+      'New access token generated successfully. For browser requests, only accessToken is returned. For API requests, both tokens are returned.',
     schema: {
       type: 'object',
       properties: {
@@ -139,7 +145,8 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @ApiOperation({
     summary: 'Google OAuth callback',
-    description: 'Handles Google OAuth callback. Creates or finds user and redirects to frontend with access token.',
+    description:
+      'Handles Google OAuth callback. Creates or finds user and redirects to frontend with access token.',
   })
   @ApiResponse({ status: 302, description: 'Redirects to frontend callback URL with access token' })
   @ApiResponse({ status: 401, description: 'OAuth authentication failed' })

@@ -3,6 +3,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { FileClientService } from './services/file-client.service';
 import { StorageClientService } from './services/storage-client.service';
 import { RoomClientService } from './services/room-client.service';
+import { AvatarClientService } from './services/auth/avatar-client.service';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { RoomClientService } from './services/room-client.service';
       },
     ]),
   ],
-  providers: [FileClientService, StorageClientService, RoomClientService],
-  exports: [FileClientService, StorageClientService, RoomClientService],
+  providers: [FileClientService, StorageClientService, RoomClientService, AvatarClientService],
+  exports: [FileClientService, StorageClientService, RoomClientService, AvatarClientService],
 })
 export class FileClientModule {}

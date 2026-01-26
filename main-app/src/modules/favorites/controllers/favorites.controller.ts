@@ -25,7 +25,8 @@ export class FavoritesController {
   )
   @ApiOperation({
     summary: 'Add storage item to favorites',
-    description: 'Adds a storage item to the user favorites list. Requires READ, WRITE, or ADMIN permission on the storage.',
+    description:
+      'Adds a storage item to the user favorites list. Requires READ, WRITE, or ADMIN permission on the storage.',
   })
   @ApiBody({ type: AddFavoriteStorageItemDto })
   @ApiResponse({

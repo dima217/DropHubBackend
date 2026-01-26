@@ -129,7 +129,7 @@ export class UniversalPermissionService {
         Array<{
           id: number;
           email: string;
-          profile?: { firstName: string; lastName: string; avatarUrl: string | null } | null;
+          profile?: { firstName: string; avatarUrl: string | null } | null;
         }>
       >;
     },
@@ -140,7 +140,6 @@ export class UniversalPermissionService {
       email: string | null;
       profile: {
         firstName: string;
-        lastName: string;
         avatarUrl: string | null;
       } | null;
     }>
@@ -158,7 +157,6 @@ export class UniversalPermissionService {
         profile: user?.profile
           ? {
               firstName: user.profile.firstName,
-              lastName: user.profile.lastName,
               avatarUrl: user.profile.avatarUrl,
             }
           : null,
