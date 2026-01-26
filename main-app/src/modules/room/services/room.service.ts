@@ -4,6 +4,7 @@ import { UniversalPermissionService } from '../../permission/services/permission
 import { ResourceType, AccessRole, Permission } from '../../permission/entities/permission.entity';
 import { RoomDto } from '../../file-client/types/room';
 import { UsersService } from '../../user/services/user.service';
+import { RoomDetailsDto } from '../dto/room.details.dto';
 
 @Injectable()
 export class RoomService {
@@ -240,7 +241,7 @@ export class RoomService {
 
     return {
       ...room,
-      participants,
-    };
+      participantsDetails: participants,
+    } as RoomDetailsDto;
   }
 }
