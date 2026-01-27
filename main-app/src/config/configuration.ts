@@ -28,6 +28,15 @@ export const configuration = (): AppConfig => {
       path: process.env.SWAGGER_PATH || '/api-docs',
       enable: process.env.ENABLE_SWAGGER === 'true' || false,
     },
+
+    mailer: {
+      host: process.env.MAIL_HOST,
+      port: process.env.MAIL_PORT,
+      user: process.env.MAIL_USER,
+      from: process.env.MAIL_FROM,
+      secure: process.env.MAIL_SECURE,
+      password: process.env.MAIL_PASSWORD,
+    },
   });
 
   const errors = validateSync(config);

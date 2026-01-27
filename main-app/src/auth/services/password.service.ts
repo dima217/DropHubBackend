@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../../modules/user/services/user.service';
 import * as argon2 from 'argon2';
-import { MailService } from './mail.service';
-import { generateToken } from '../common/additional.functions';
+import { VerifyCodeService } from '../modules/code/services/verify-code.service';
+import { Code } from '../modules/code/entity/code.entity';
 
 @Injectable()
 export class PasswordService {
   constructor(
     private readonly usersService: UsersService,
-    private mailService: MailService,
+    private readonly verifyCodeService: VerifyCodeService,
   ) {}
 
   async changePassword(userId: number, oldPassword: string, newPassword: string) {
@@ -45,29 +45,17 @@ export class PasswordService {
     });
   }
 
-  async forgotPassword(email: string) {
+  async resetPasswordByCode(email: string, code: string, newPassword: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      return { message: 'If this user exists, they will receive an email!' };
+      throw new NotFoundException('User not found...');
     }
 
-    const expiryDate = new Date();
-    expiryDate.setHours(expiryDate.getHours() + 1);
+    const isValid = await this.verifyCodeService.verifyCode(email, code, Code.Types.recovery);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid or expired code');
+    }
 
-    const resetToken = generateToken(32);
-
-    await this.usersService.updateUserToken(user.id, {
-      resetPasswordToken: null,
-      tokenExpiredDate: null,
-    });
-
-    await this.usersService.updateUserToken(user.id, {
-      resetPasswordToken: resetToken,
-      tokenExpiredDate: expiryDate,
-    });
-
-    await this.mailService.sendPasswordResetEmail(email, user.id, resetToken);
-
-    return { message: 'If this user exists, they will receive an email' };
+    await this.usersService.updatePassword(user.id, newPassword);
   }
 }

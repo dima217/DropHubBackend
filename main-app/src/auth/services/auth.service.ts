@@ -8,6 +8,7 @@ import { DataSource } from 'typeorm';
 import { ProfileService } from 'src/modules/user/services/profile.service';
 import { TokenService } from './token.service';
 import { AvatarClientService } from '@application/file-client/services/auth/avatar-client.service';
+import { RequestEmailCodeDto } from '../dto/request-email-code.dto';
 
 @Injectable()
 export class AuthService {
@@ -65,6 +66,11 @@ export class AuthService {
     } else {
       throw new NotFoundException('Incorrect credentials');
     }
+  }
+
+  async userExist(authPayloadDto: RequestEmailCodeDto) {
+    const findUser = await this.usersService.findByEmail(authPayloadDto.email);
+    return findUser;
   }
 
   async login(userId: number) {

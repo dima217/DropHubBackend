@@ -6,8 +6,13 @@ export class VerifyEmailCodeDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ description: '8-digit verification code', example: '12345678', minLength: 8, maxLength: 8 })
+  @ApiProperty({
+    description: '6-digit verification code',
+    example: '123456',
+    minLength: 6,
+    maxLength: 6,
+  })
   @IsString()
-  @Length(8, 8)
+  @Length(6, 6)
   code: string;
 }

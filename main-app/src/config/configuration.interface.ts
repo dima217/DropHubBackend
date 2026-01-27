@@ -47,6 +47,28 @@ export class SwaggerConfig {
   enable: boolean;
 }
 
+export class MailConfig {
+  @IsString()
+  host: string;
+
+  @IsInt()
+  @Type(() => Number)
+  port: number;
+
+  @IsString()
+  user: string;
+
+  @IsString()
+  from: string;
+
+  @IsBoolean()
+  @Type(() => Boolean)
+  secure: boolean;
+
+  @IsString()
+  password: string;
+}
+
 export class AppConfig {
   @IsString()
   environment: string;
@@ -57,6 +79,10 @@ export class AppConfig {
   @ValidateNested()
   @Type(() => PostgresConfig)
   postgres: PostgresConfig;
+
+  @ValidateNested()
+  @Type(() => MailConfig)
+  mailer: MailConfig;
 
   @ValidateNested()
   @Type(() => RedisConfig)

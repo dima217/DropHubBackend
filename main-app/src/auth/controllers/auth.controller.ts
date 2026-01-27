@@ -5,7 +5,6 @@ import { LocalGuard } from '../guards/local-guard';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { RequestEmailCodeDto } from '../dto/request-email-code.dto';
 import { VerifyEmailCodeDto } from '../dto/verify-email-code.dto';
-import { VerificationService } from '../services/verification.service';
 import type { LoginRequestUser, RefreshTokenRequest } from 'src/types/express';
 import type { Request, Response } from 'express';
 import { RefreshTokenGuard } from '../guards/refresh-token-guard';
@@ -14,6 +13,10 @@ import { RegisterUserDto } from '../dto/register.dto';
 import { AuthPayloadDto } from '../dto/auth.dto';
 import { TokenService } from '../services/token.service';
 import { PasswordService } from '../services/password.service';
+import { SendCodeProvider } from '../modules/code/services/send.code.provider';
+import { VerifyCodeService } from '../modules/code/services/verify-code.service';
+import { Code } from '../modules/code/entity/code.entity';
+import { ResetPasswordByCodeDto } from '../dto/reset-password-by-code.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -24,7 +27,8 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
-    private readonly verificationService: VerificationService,
+    private readonly codeService: VerifyCodeService,
+    private readonly sendCodeProvider: SendCodeProvider,
   ) {}
 
   @Post('login')
@@ -63,6 +67,52 @@ export class AuthController {
     this.logger.error(id);
     const payload = await this.authService.login(id);
     return this.authService.sendAuthResponse(request, response, { ...payload, user: { profile } });
+  }
+
+  @Post('sign-up-init')
+  async signUpInit(@Body() signUpInitDto: RequestEmailCodeDto) {
+    const existUser = await this.authService.userExist(signUpInitDto);
+    if (!existUser) {
+      const code = await this.codeService.generateCode(signUpInitDto.email, Code.Types.signup);
+      this.sendCodeProvider
+        .sendCode({
+          email: signUpInitDto.email,
+          code: code.code,
+          type: code.type,
+          expirationDate: code.expirationDate,
+        })
+        .catch((error) => {
+          this.logger.error(
+            `Failed to send signup code to ${signUpInitDto.email}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+    }
+  }
+
+  @Post('sign-up-verify-code')
+  @ApiOperation({
+    summary: 'Verify sign-up email code',
+    description: 'Verifies the 6-digit verification code sent during sign-up initialization.',
+  })
+  @ApiBody({ type: VerifyEmailCodeDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Sign-up email code verified successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        verified: { type: 'boolean', example: true },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired verification code' })
+  async verifySignUpCode(@Body() dto: VerifyEmailCodeDto) {
+    const isValid = await this.codeService.verifyCode(dto.email, dto.code, Code.Types.signup);
+    if (!isValid) {
+      return { verified: false };
+    }
+
+    return { verified: true };
   }
 
   @Post('sign-up')
@@ -207,38 +257,35 @@ export class AuthController {
     },
   })
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
-    return this.passwordService.forgotPassword(forgotPasswordDto.email);
+    const code = await this.codeService.generateCode(forgotPasswordDto.email, Code.Types.recovery);
+
+    this.sendCodeProvider
+      .sendCode({
+        email: forgotPasswordDto.email,
+        code: code.code,
+        type: code.type,
+        expirationDate: code.expirationDate,
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Failed to send recovery code to ${forgotPasswordDto.email}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+
+    return { message: 'If this user exists, they will receive an email' };
   }
 
-  @Post('email/send-code')
+  @Post('forgot-password/verify-code')
   @ApiOperation({
-    summary: 'Send email verification code',
-    description: 'Sends a verification code to the specified email address.',
-  })
-  @ApiBody({ type: RequestEmailCodeDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Verification code sent successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Verification code sent' },
-      },
-    },
-  })
-  async sendEmailCode(@Body() dto: RequestEmailCodeDto) {
-    return this.verificationService.sendEmailCode(dto.email);
-  }
-
-  @Post('email/verify-code')
-  @ApiOperation({
-    summary: 'Verify email code',
-    description: 'Verifies the 8-digit code sent to the email address.',
+    summary: 'Verify password recovery code',
+    description: 'Verifies the 6-digit recovery code sent to the user email.',
   })
   @ApiBody({ type: VerifyEmailCodeDto })
   @ApiResponse({
     status: 200,
-    description: 'Email code verified successfully',
+    description: 'Recovery code verified',
     schema: {
       type: 'object',
       properties: {
@@ -246,8 +293,36 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Invalid or expired verification code' })
-  verifyCode(@Body() dto: VerifyEmailCodeDto) {
-    return this.verificationService.verifyEmailCode(dto.email, dto.code);
+  @ApiResponse({ status: 400, description: 'Invalid or expired recovery code' })
+  async verifyForgotPasswordCode(@Body() dto: VerifyEmailCodeDto) {
+    const isValid = await this.codeService.verifyCode(dto.email, dto.code, Code.Types.recovery);
+    if (!isValid) {
+      return { verified: false };
+    }
+
+    return { verified: true };
+  }
+
+  @Post('forgot-password/reset')
+  @ApiOperation({
+    summary: 'Reset password using verification code',
+    description: 'Resets user password using a valid 6-digit recovery code sent to email.',
+  })
+  @ApiBody({ type: ResetPasswordByCodeDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password has been reset successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired recovery code' })
+  async resetPasswordByCode(@Body() dto: ResetPasswordByCodeDto) {
+    await this.passwordService.resetPasswordByCode(dto.email, dto.code, dto.newPassword);
+
+    return { success: true };
   }
 }

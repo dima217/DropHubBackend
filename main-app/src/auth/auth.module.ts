@@ -8,14 +8,14 @@ import { LocalStrategy } from './strategies/local-strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt-strategy';
 import { RolesGuard } from './guards/roles-guard';
-import { MailService } from './services/mail.service';
-import { VerificationService } from './services/verification.service';
 import { TokenService } from './services/token.service';
 import { PasswordService } from './services/password.service';
 import { WsJwtAuthGuard } from './guards/ws-jwt-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-guard';
 import { RefreshTokenGuard } from './guards/refresh-token-guard';
 import { FileClientModule } from '@application/file-client';
+import { MailerProvider } from './modules/code/provider/mailer.provider';
+import { CodeModule } from './modules/code/code.module';
 
 @Module({
   imports: [
@@ -30,11 +30,11 @@ import { FileClientModule } from '@application/file-client';
       inject: [ConfigService],
     }),
     FileClientModule,
+    CodeModule,
   ],
   providers: [
     AuthService,
-    VerificationService,
-    MailService,
+    MailerProvider,
     LocalStrategy,
     JwtStrategy,
     RolesGuard,
