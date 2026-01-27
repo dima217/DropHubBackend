@@ -131,7 +131,11 @@ export class AuthService {
       accessToken,
       refreshToken,
       avatarUrl: avatarUrl,
-      avatarKey: avatarKey ?? dto.customAvatarNumber?.toString(),
+      avatarKey: avatarKey
+        ? [avatarKey]
+        : dto.customAvatarNumber
+          ? [`default-${dto.customAvatarNumber}`]
+          : null,
     };
   }
 

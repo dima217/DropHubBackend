@@ -74,8 +74,23 @@ export class AvatarService implements OnModuleInit {
     return getSignedUrl(this.s3Service.client, command, { expiresIn: 3600 });
   }
 
-  async getAvatarsByUserIds(userIds: string[]) {
-    const urls = await Promise.all(userIds.map((userId) => this.getDownloadUrl(`avatars/${userId}`)));
+  async getAvatarsByKeys(keys: string[]) {
+    const urls = await Promise.all(
+      keys.map(async (key) => {
+        const defaultMatch = key.match(/^default-(\d+)$/);
+        if (defaultMatch) {
+          const index = parseInt(defaultMatch[1], 10);
+          try {
+            return await this.getDefaultAvatar(index);
+          } catch (err) {
+            console.warn(`Default avatar ${index} not found`);
+            return null;
+          }
+        }
+        return this.getDownloadUrl(key);
+      })
+    );
     return urls;
   }
+  
 }

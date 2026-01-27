@@ -18,10 +18,10 @@ export class AvatarController {
     return this.avatarService.getDownloadUrl(key);
   }
 
-  @MessagePattern("avatar.getByUserIds")
-  async getByUserIds(@Payload() data: { userIds: string[] }) {
-    const { userIds } = data;
-    return this.avatarService.getAvatarsByUserIds(userIds);
+  @MessagePattern("avatar.getAvatarsByKeys")
+  async getAvatarsByKeys(@Payload() data: { keys: string[] }) {
+    const { keys } = data;
+    return this.avatarService.getAvatarsByKeys(keys);
   }
 
   @MessagePattern("avatar.getDefaultAvatar")
