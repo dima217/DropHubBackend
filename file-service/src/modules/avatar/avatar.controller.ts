@@ -1,4 +1,4 @@
-import { Controller, Inject } from "@nestjs/common";
+import { Controller } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { AvatarService } from "./avatar.service";
 
@@ -22,5 +22,15 @@ export class AvatarController {
   async getByUserIds(@Payload() data: { userIds: string[] }) {
     const { userIds } = data;
     return this.avatarService.getAvatarsByUserIds(userIds);
+  }
+
+  @MessagePattern("avatar.getDefaultAvatar")
+  async getDefaultAvatar(@Payload() data: { number: number }) {
+    const { number } = data;
+    try {
+      return await this.avatarService.getDefaultAvatar(number);
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 }

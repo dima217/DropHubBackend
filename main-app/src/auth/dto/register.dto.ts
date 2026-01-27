@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterUserDto {
@@ -20,7 +20,10 @@ export class RegisterUserDto {
   @IsNotEmpty()
   firstName: string;
 
-  @IsString()
+  @ApiProperty({ description: 'Custom avatar number', example: 1 })
   @IsOptional()
-  avatarUrl?: string;
+  @IsNumber()
+  @Min(1)
+  @Max(6)
+  customAvatarNumber?: number;
 }

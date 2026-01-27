@@ -43,6 +43,9 @@ export class S3Config {
   bucket?: string;
 
   @IsOptional() @IsString()
+  bucketAvatar?: string;
+
+  @IsOptional() @IsString()
   accessKeyId?: string;
 
   @IsOptional() @IsString()

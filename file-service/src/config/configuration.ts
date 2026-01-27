@@ -13,6 +13,7 @@ export const configuration = (): AppConfig => {
     s3: {
       endpoint: process.env.S3_ENDPOINT,
       bucket: process.env.S3_BUCKET,
+      bucketAvatar: process.env.S3_BUCKET_AVATAR || process.env.S3_BUCKET,
       accessKeyId: process.env.S3_ACCESS_KEY,
       secretAccessKey: process.env.S3_SECRET_KEY,
     },

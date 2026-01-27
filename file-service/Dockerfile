@@ -7,6 +7,8 @@ COPY package.json yarn.lock ./
 
 RUN yarn install --frozen-lockfile --pure-lockfile
 
+COPY default-avatars ./default-avatars
+
 COPY . .
 
 RUN yarn build
@@ -22,6 +24,7 @@ COPY package.json ./
 RUN yarn install --production --frozen-lockfile --pure-lockfile
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/default-avatars ./default-avatars
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001

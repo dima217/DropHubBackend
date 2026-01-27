@@ -85,7 +85,12 @@ export class AuthService {
     };
   }
 
-  async registerUser(dto: { email: string; password: string; firstName: string }) {
+  async registerUser(dto: {
+    email: string;
+    password: string;
+    firstName: string;
+    customAvatarNumber?: number;
+  }) {
     const userData = {
       ...dto,
       password: dto.password,
@@ -98,11 +103,26 @@ export class AuthService {
 
     const user = await this.createUserWithProfile(userData);
 
-    const { url, key } = await this.avatarService.getUploadUrl({
-      userId: user.id.toString(),
-      contentType: 'image/png',
-    });
+    let avatarUrl: string | null = null;
+    let avatarKey: string | null = null;
 
+    if (dto.customAvatarNumber) {
+      try {
+        const { url } = await this.avatarService.getDefaultAvatar(dto.customAvatarNumber);
+        avatarUrl = url;
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw new BadRequestException('Invalid default avatar number');
+        }
+      }
+    } else {
+      const { url, key } = await this.avatarService.getUploadUrl({
+        userId: user.id.toString(),
+        contentType: 'image/png',
+      });
+      avatarUrl = url;
+      avatarKey = key;
+    }
     const accessToken = this.tokenService.generateAccessToken(user.id);
     const refreshToken = this.tokenService.generateRefreshToken(user.id);
     await this.usersService.updateRefreshToken(user.id, refreshToken);
@@ -110,8 +130,8 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      avatarKey: key,
-      uploadUrl: url,
+      avatarUrl: avatarUrl,
+      avatarKey: avatarKey ?? dto.customAvatarNumber?.toString(),
     };
   }
 

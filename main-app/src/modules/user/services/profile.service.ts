@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Profile } from '../entities/profile.entity';
 import { UserUpdateProfileDTO } from '../dto/update-profile.dto';
+import { AvatarClientService } from '@application/file-client/services/auth/avatar-client.service';
 
 @Injectable()
 export class ProfileService {
   constructor(
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
+    private avatarClientService: AvatarClientService,
   ) {}
 
   async createProfileTransactional(
@@ -38,6 +40,14 @@ export class ProfileService {
     });
     return profile?.contacts || [];
   } */
+
+  async uploadAvatar(userId: number) {
+    const { url, key } = await this.avatarClientService.getUploadUrl({
+      userId: userId.toString(),
+      contentType: 'image/png',
+    });
+    return { url, key };
+  }
 
   async updateProfile(profileId: number, dto: UserUpdateProfileDTO): Promise<Profile> {
     const profile = await this.getProfileById(profileId);

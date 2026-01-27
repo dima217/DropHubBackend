@@ -1,5 +1,14 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import { ProfileService } from '../services/profile.service';
 import { UserUpdateProfileDTO } from '../dto/update-profile.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
@@ -34,6 +43,27 @@ export class ProfileController {
   @ApiResponse({ status: 404, description: 'Profile not found' })
   async updateProfile(@Req() req: RequestWithUser, @Body() body: UserUpdateProfileDTO) {
     return this.profileService.updateProfile(req.user.profileId, body);
+  }
+
+  @Get(':userId/upload-url')
+  @ApiOperation({ summary: 'Get upload URL for user avatar' })
+  @ApiParam({ name: 'userId', type: Number, description: 'ID of the user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload URL retrieved successfully',
+    schema: { example: { url: 'https://...', key: 'avatar-key.png' } },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid userId' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getUploadAvatarUrl(@Req() req: RequestWithUser) {
+    try {
+      return await this.profileService.uploadAvatar(req.user.id);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException('Failed to get upload URL', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   /* @Post('/add-contact')

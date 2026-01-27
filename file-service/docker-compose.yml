@@ -23,6 +23,7 @@ services:
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
       - S3_BUCKET=files
+      - S3_BUCKET_AVATAR=avatars
 
       # Redis (из другого docker-compose)
       - REDIS_HOST=redis # ← имя контейнера Redis
