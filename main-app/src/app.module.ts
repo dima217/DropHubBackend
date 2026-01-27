@@ -16,6 +16,7 @@ import { RoomModule } from '@application/room/room.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { SearchModule } from './modules/search/search.module';
+import { AvatarModule } from '@application/avatar/avatar.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { SearchModule } from './modules/search/search.module';
     FavoritesModule,
     CommentsModule,
     SearchModule,
+    AvatarModule,
   ],
   controllers: [AppController],
   providers: [AppService],

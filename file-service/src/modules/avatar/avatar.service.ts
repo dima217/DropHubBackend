@@ -8,7 +8,7 @@ import * as path from "path";
 
 @Injectable()
 export class AvatarService implements OnModuleInit {
-  private defaultAvatarKeys: string[] = []; 
+  private defaultAvatarKeys: string[] = [];
 
   constructor(
     private readonly s3Service: S3Service,
@@ -16,14 +16,16 @@ export class AvatarService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const defaultDir = path.join(process.cwd(), 'default-avatars');
-      if (!fs.existsSync(defaultDir)) {
-        console.warn('Default avatars folder not found:', defaultDir);
-        return;
-      }
-    const files = fs.readdirSync(defaultDir).filter((f) => f.match(/\.(png|jpg|jpeg)$/));
+    const defaultDir = path.join(process.cwd(), "default-avatars");
+    if (!fs.existsSync(defaultDir)) {
+      console.warn("Default avatars folder not found:", defaultDir);
+      return;
+    }
+    const files = fs
+      .readdirSync(defaultDir)
+      .filter((f) => f.match(/\.(png|jpg|jpeg)$/));
     if (!files.length) {
-      console.warn('No default avatar files found in:', defaultDir);
+      console.warn("No default avatar files found in:", defaultDir);
       return;
     }
 
@@ -62,7 +64,9 @@ export class AvatarService implements OnModuleInit {
       ContentType: contentType,
     });
 
-    const url = await getSignedUrl(this.s3Service.client, command, { expiresIn: 3600 });
+    const url = await getSignedUrl(this.s3Service.client, command, {
+      expiresIn: 3600,
+    });
     return { url, key };
   }
 
@@ -92,5 +96,15 @@ export class AvatarService implements OnModuleInit {
     );
     return urls;
   }
-  
+
+  async getAllDefaultAvatars(): Promise<string[]> {
+    if (!this.defaultAvatarKeys.length) {
+      console.warn("Default avatars are not initialized");
+      return [];
+    }
+
+    return Promise.all(
+      this.defaultAvatarKeys.map((key) => this.getDownloadUrl(key))
+    );
+  }
 }

@@ -33,4 +33,9 @@ export class AvatarController {
       return { error: error.message };
     }
   }
+
+  @MessagePattern("avatar.getAllDefaultAvatars")
+  async getAllDefaultAvatars() {
+    return this.avatarService.getAllDefaultAvatars();
+  }
 }

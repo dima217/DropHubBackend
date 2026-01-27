@@ -33,4 +33,8 @@ export class AvatarClientService {
   async getDefaultAvatar(number: number) {
     return this.send<{ url: string }>('avatar.getDefaultAvatar', { number });
   }
+
+  async getAllDefaultAvatars() {
+    return this.send<string[]>('avatar.getAllDefaultAvatars', {});
+  }
 }
