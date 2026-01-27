@@ -16,7 +16,6 @@ async function bootstrap() {
       },
       prefetchCount: 1,
       persistent: true,
-      noAck: false,
       socketOptions: {
         heartbeatIntervalInSeconds: 60,
         reconnectTimeInSeconds: 5,

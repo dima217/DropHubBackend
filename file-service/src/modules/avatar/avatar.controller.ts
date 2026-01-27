@@ -36,6 +36,12 @@ export class AvatarController {
 
   @MessagePattern("avatar.getAllDefaultAvatars")
   async getAllDefaultAvatars() {
-    return this.avatarService.getAllDefaultAvatars();
+    try {
+      const result = await this.avatarService.getAllDefaultAvatars();
+      return result;
+    } catch (error) {
+      console.error("Error in getAllDefaultAvatars:", error);
+      return [];
+    }
   }
 }

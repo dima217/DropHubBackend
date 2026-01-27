@@ -9,6 +9,7 @@ import * as path from "path";
 @Injectable()
 export class AvatarService implements OnModuleInit {
   private defaultAvatarKeys: string[] = [];
+  private defaultAvatarUrls: string[] = [];
 
   constructor(
     private readonly s3Service: S3Service,
@@ -46,14 +47,21 @@ export class AvatarService implements OnModuleInit {
       await this.s3Service.client.send(command);
       this.defaultAvatarKeys[i] = key;
     }
+    this.defaultAvatarUrls = await Promise.all(
+      this.defaultAvatarKeys.map((key) => this.getDownloadUrl(key))
+    );
   }
 
   async getDefaultAvatar(number: number) {
     if (number < 1 || number > this.defaultAvatarKeys.length) {
       throw new Error("Invalid default avatar number. Must be 1-6.");
     }
-    const key = this.defaultAvatarKeys[number - 1];
-    return this.getDownloadUrl(key);
+    const url = this.defaultAvatarUrls[number - 1];
+    if (!url) {
+      const key = this.defaultAvatarKeys[number - 1];
+      return this.getDownloadUrl(key);
+    }
+    return url;
   }
 
   async getUploadUrl(userId: string, contentType: string) {
@@ -98,13 +106,11 @@ export class AvatarService implements OnModuleInit {
   }
 
   async getAllDefaultAvatars(): Promise<string[]> {
-    if (!this.defaultAvatarKeys.length) {
-      console.warn("Default avatars are not initialized");
+    // Просто отдаем закешированные URL-ы
+    if (!this.defaultAvatarUrls.length) {
+      console.warn("Default avatar URLs are not initialized");
       return [];
     }
-
-    return Promise.all(
-      this.defaultAvatarKeys.map((key) => this.getDownloadUrl(key))
-    );
+    return this.defaultAvatarUrls;
   }
 }

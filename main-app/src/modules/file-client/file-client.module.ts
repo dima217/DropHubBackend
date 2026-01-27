@@ -17,6 +17,10 @@ import { AvatarClientService } from './services/auth/avatar-client.service';
           queueOptions: {
             durable: true,
           },
+          socketOptions: {
+            heartbeatIntervalInSeconds: 60,
+            reconnectTimeInSeconds: 5,
+          },
         },
       },
     ]),

@@ -11,6 +11,10 @@ interface GetUploadUrlParams {
 export class AvatarClientService {
   constructor(@Inject('FILE_SERVICE') private readonly rpcClient: ClientProxy) {}
 
+  async onModuleInit() {
+    await this.rpcClient.connect();
+  }
+
   private send<TResponse, TPayload = unknown>(
     pattern: string,
     payload: TPayload,
