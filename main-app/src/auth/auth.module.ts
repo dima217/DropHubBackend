@@ -14,7 +14,6 @@ import { WsJwtAuthGuard } from './guards/ws-jwt-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-guard';
 import { RefreshTokenGuard } from './guards/refresh-token-guard';
 import { FileClientModule } from '@application/file-client';
-import { MailerProvider } from './modules/code/provider/mailer.provider';
 import { CodeModule } from './modules/code/code.module';
 
 @Module({
@@ -34,7 +33,6 @@ import { CodeModule } from './modules/code/code.module';
   ],
   providers: [
     AuthService,
-    MailerProvider,
     LocalStrategy,
     JwtStrategy,
     RolesGuard,

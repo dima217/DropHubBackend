@@ -28,6 +28,7 @@ export class AuthService {
     payload: {
       accessToken: string;
       refreshToken: string;
+      avatarUrl?: any;
       user?: any;
     },
   ) {
@@ -46,6 +47,8 @@ export class AuthService {
         accessToken: payload.accessToken,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         user: payload.user,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        avatarUrl: payload.avatarUrl,
       });
     }
 
@@ -104,38 +107,46 @@ export class AuthService {
     const user = await this.createUserWithProfile(userData);
 
     let avatarUrl: string | null = null;
-    let avatarKey: string | null = null;
 
     if (dto.customAvatarNumber) {
       try {
         const { url } = await this.avatarService.getDefaultAvatar(dto.customAvatarNumber);
         avatarUrl = url;
+        this.logger.debug(
+          `getDefaultAvatar response`,
+          JSON.stringify({
+            url: url,
+            customAvatarNumber: dto.customAvatarNumber,
+          }),
+        );
       } catch (error) {
         if (error instanceof BadRequestException) {
           throw new BadRequestException('Invalid default avatar number');
         }
       }
     } else {
-      const { url, key } = await this.avatarService.getUploadUrl({
+      const { url } = await this.avatarService.getUploadUrl({
         userId: user.id.toString(),
         contentType: 'image/png',
       });
       avatarUrl = url;
-      avatarKey = key;
     }
     const accessToken = this.tokenService.generateAccessToken(user.id);
     const refreshToken = this.tokenService.generateRefreshToken(user.id);
     await this.usersService.updateRefreshToken(user.id, refreshToken);
 
+    this.logger.debug(
+      `Register response`,
+      JSON.stringify({
+        userId: user.id,
+        avatarUrl,
+      }),
+    );
+
     return {
       accessToken,
       refreshToken,
       avatarUrl: avatarUrl,
-      avatarKey: avatarKey
-        ? [avatarKey]
-        : dto.customAvatarNumber
-          ? [`default-${dto.customAvatarNumber}`]
-          : null,
     };
   }
 

@@ -61,7 +61,7 @@ export class AvatarService implements OnModuleInit {
       const key = this.defaultAvatarKeys[number - 1];
       return this.getDownloadUrl(key);
     }
-    return url;
+    return {url: url};
   }
 
   async getUploadUrl(userId: string, contentType: string) {
@@ -102,11 +102,10 @@ export class AvatarService implements OnModuleInit {
         return this.getDownloadUrl(key);
       })
     );
-    return urls;
+    return { urls: urls };
   }
 
   async getAllDefaultAvatars(): Promise<string[]> {
-    // Просто отдаем закешированные URL-ы
     if (!this.defaultAvatarUrls.length) {
       console.warn("Default avatar URLs are not initialized");
       return [];

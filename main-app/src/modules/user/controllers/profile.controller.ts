@@ -35,7 +35,11 @@ export class ProfileController {
       properties: {
         id: { type: 'number', example: 1 },
         firstName: { type: 'string', example: 'John' },
-        avatarUrl: { type: 'string', example: 'https://example.com/avatar.jpg' },
+        avatarUrl: {
+          type: 'string',
+          example: 'https://minio.example.com/bucket-name/avatars/user-123.jpg',
+          description: 'URL аватара в S3/MinIO хранилище',
+        },
       },
     },
   })

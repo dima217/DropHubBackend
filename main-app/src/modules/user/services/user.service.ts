@@ -32,11 +32,11 @@ export class UsersService {
   }
 
   async getUserById(id: number): Promise<User | null> {
-    return this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { id },
-      select: [...USER_SELECT_FIELDS],
       relations: ['profile'],
     });
+    return user;
   }
 
   async findByEmail(email: string): Promise<User | null> {
