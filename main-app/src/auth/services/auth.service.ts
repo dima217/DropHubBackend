@@ -113,6 +113,11 @@ export class AuthService {
     const existingUser = await this.usersService.findByEmail(dto.email);
     if (existingUser) throw new BadRequestException('User already exists');
 
+    const existingUserByFirstName = await this.profileService.findByFirstName(dto.firstName);
+    if (existingUserByFirstName) {
+      throw new BadRequestException('Username already taken');
+    }
+
     const user = await this.createUserWithProfile(userData);
 
     let avatarUrl: string | null = null;

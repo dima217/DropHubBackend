@@ -1,7 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { User } from './user.entity';
+
 @Entity()
+@Unique(['firstName'])
 export class Profile {
   @ApiProperty({ description: 'Unique user identifier' })
   @PrimaryGeneratedColumn()

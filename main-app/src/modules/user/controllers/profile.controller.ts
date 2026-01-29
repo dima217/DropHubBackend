@@ -5,10 +5,11 @@ import {
   HttpException,
   HttpStatus,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ProfileService } from '../services/profile.service';
 import { UserUpdateProfileDTO } from '../dto/update-profile.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
@@ -49,7 +50,43 @@ export class ProfileController {
     return this.profileService.updateProfile(req.user.profileId, body);
   }
 
-  @Get(':userId/upload-url')
+  @Get('/search')
+  @ApiOperation({
+    summary: 'Search profiles by name',
+    description:
+      'Searches for profiles by first name (partial match, case-insensitive). Returns maximum 10 results.',
+  })
+  @ApiQuery({
+    name: 'query',
+    type: String,
+    description: 'Search query for profile first name',
+    example: 'г',
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profiles found successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'number', example: 1 },
+          firstName: { type: 'string', example: 'Григорий' },
+          avatarUrl: { type: 'string', nullable: true, example: 'https://...' },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid query parameter' })
+  async searchProfiles(@Query('query') query: string) {
+    if (!query || query.trim().length === 0) {
+      throw new HttpException('Query parameter is required', HttpStatus.BAD_REQUEST);
+    }
+    return this.profileService.searchProfilesByName(query.trim(), 10);
+  }
+
+  @Get('/upload-url')
   @ApiOperation({ summary: 'Get upload URL for user avatar' })
   @ApiParam({ name: 'userId', type: Number, description: 'ID of the user' })
   @ApiResponse({

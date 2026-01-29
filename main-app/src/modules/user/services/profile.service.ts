@@ -27,6 +27,20 @@ export class ProfileService {
     return profile;
   }
 
+  async findByFirstName(firstName: string): Promise<Profile | null> {
+    return this.profileRepository.findOne({
+      where: { firstName },
+    });
+  }
+
+  async searchProfilesByName(query: string, limit: number = 10): Promise<Profile[]> {
+    return this.profileRepository
+      .createQueryBuilder('profile')
+      .where('LOWER(profile.firstName) LIKE LOWER(:query)', { query: `%${query}%` })
+      .take(limit)
+      .getMany();
+  }
+
   async getProfileByUserId(userId: number): Promise<Profile> {
     const profile = await this.profileRepository.findOne({ where: { user: { id: userId } } });
     if (!profile) throw new NotFoundException(`Profile with ID ${userId} not found`);
@@ -42,11 +56,11 @@ export class ProfileService {
   } */
 
   async uploadAvatar(userId: number) {
-    const { url, key } = await this.avatarClientService.getUploadUrl({
+    const { url, publicUrl } = await this.avatarClientService.getUploadUrl({
       userId: userId.toString(),
       contentType: 'image/png',
     });
-    return { url, key };
+    return { uploadUrl: url, publicUrl: publicUrl };
   }
 
   async updateProfile(profileId: number, dto: UserUpdateProfileDTO): Promise<Profile> {

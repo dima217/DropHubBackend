@@ -23,7 +23,8 @@ export class RelationshipsController {
   @Post('request')
   @ApiOperation({
     summary: 'Send friend request',
-    description: 'Sends a friend request to a user by email address. If user is not found, suggests sending an invitation email.',
+    description:
+      'Sends a friend request to a user by email address. If user is not found, suggests sending an invitation email.',
   })
   @ApiBody({ type: SendRequestDto })
   @ApiResponse({
@@ -47,7 +48,10 @@ export class RelationshipsController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Bad request - invalid email or request already exists' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - invalid email or request already exists',
+  })
   async sendRequest(@Req() req: RequestWithUser, @Body() sendRequestDto: SendRequestDto) {
     const senderId = req.user.id;
 
