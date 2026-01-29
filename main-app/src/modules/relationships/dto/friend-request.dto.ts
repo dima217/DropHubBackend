@@ -1,5 +1,5 @@
 // src/relationships/dto/friend-request.dto.ts
-import { IsEmail, IsNotEmpty } from 'class-validator';
+import { IsInt, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SendRequestDto {
@@ -8,6 +8,6 @@ export class SendRequestDto {
     example: 'friend@example.com',
   })
   @IsNotEmpty()
-  @IsEmail()
-  email: string;
+  @IsInt()
+  profileId: number;
 }

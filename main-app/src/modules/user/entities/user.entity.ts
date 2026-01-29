@@ -11,6 +11,7 @@ import {
 import { IsBoolean, IsEnum } from 'class-validator';
 import { Profile } from './profile.entity';
 import { Permission } from '@application/permission/entities/permission.entity';
+import { FriendRequest } from '@application/relationships/entities/friend-request.entity';
 
 export enum UserRole {
   USER = 'user',
@@ -72,4 +73,10 @@ export class User {
 
   @RelationId((user: User) => user.profile)
   profileId: number;
+
+  @OneToMany(() => FriendRequest, (fr) => fr.sender)
+  sentRequests: FriendRequest[];
+
+  @OneToMany(() => FriendRequest, (fr) => fr.receiver)
+  receivedRequests: FriendRequest[];
 }

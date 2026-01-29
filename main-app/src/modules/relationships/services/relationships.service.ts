@@ -16,8 +16,8 @@ export class RelationshipsService {
     private readonly centrifugo: CentrifugoService,
   ) {}
 
-  async sendFriendRequest(senderId: number, targetEmail: string): Promise<FriendRequest> {
-    const targetUser = await this.usersService.findUserForContact(targetEmail);
+  async sendFriendRequest(senderId: number, profileId: number): Promise<FriendRequest> {
+    const targetUser = await this.usersService.findByProfileId(profileId);
     if (!targetUser) throw new NotFoundException('User not found.');
     const receiverId = targetUser.id;
 
@@ -97,5 +97,25 @@ export class RelationshipsService {
       message: `User ${senderId} cancelled the friend request.`,
       senderId,
     });
+  }
+
+  async getAllRequestsForUser(userId: number): Promise<
+    {
+      id: number;
+      senderId: number;
+      receiverId: number;
+      status: RequestStatus;
+    }[]
+  > {
+    const requests = await this.requestRepository.find({
+      where: [{ sender: { id: userId } }, { receiver: { id: userId } }],
+      order: { createdAt: 'DESC' },
+    });
+    return requests.map((r) => ({
+      id: r.id,
+      senderId: r.senderId,
+      receiverId: r.receiverId,
+      status: r.status,
+    }));
   }
 }

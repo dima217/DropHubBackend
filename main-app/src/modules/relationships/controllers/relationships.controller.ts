@@ -58,7 +58,7 @@ export class RelationshipsController {
     try {
       const request = await this.relationshipsService.sendFriendRequest(
         senderId,
-        sendRequestDto.email,
+        sendRequestDto.profileId,
       );
       return { message: 'Request has been sent.', requestId: request.id };
     } catch (error) {
@@ -150,5 +150,10 @@ export class RelationshipsController {
     const senderId = req.user.id;
     await this.relationshipsService.cancelRequest(senderId, requestId);
     return { message: 'Request canceled.' };
+  }
+
+  @Post('/requests')
+  async getRequests(@Req() req: RequestWithUser) {
+    await this.relationshipsService.getAllRequestsForUser(req.user.id);
   }
 }

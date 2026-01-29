@@ -47,9 +47,9 @@ export class UsersService {
     return user;
   }
 
-  async findUserForContact(email: string): Promise<User | null> {
+  async findByProfileId(profileId: number): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { email },
+      where: { profileId },
       select: ['id', 'email'],
     });
   }
