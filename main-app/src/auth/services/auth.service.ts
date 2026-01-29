@@ -29,7 +29,10 @@ export class AuthService {
       accessToken: string;
       refreshToken: string;
       avatarUrl?: any;
+      avatarKey?: any;
+      publicUrl?: any;
       user?: any;
+      uploadUrl?: any;
     },
   ) {
     const isMobileApp = req.headers['x-client-type'] === 'mobile-app';
@@ -49,6 +52,12 @@ export class AuthService {
         user: payload.user,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         avatarUrl: payload.avatarUrl,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        avatarKey: payload.avatarKey,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        publicUrl: payload.publicUrl,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        uploadUrl: payload.uploadUrl,
       });
     }
 
@@ -107,6 +116,9 @@ export class AuthService {
     const user = await this.createUserWithProfile(userData);
 
     let avatarUrl: string | null = null;
+    let uploadUrl: string | null = null;
+    let avatarKey: string | null = null;
+    let publicDownloadUrl: string | null = null;
 
     if (dto.customAvatarNumber) {
       try {
@@ -125,11 +137,13 @@ export class AuthService {
         }
       }
     } else {
-      const { url } = await this.avatarService.getUploadUrl({
+      const { url, key, publicUrl } = await this.avatarService.getUploadUrl({
         userId: user.id.toString(),
         contentType: 'image/png',
       });
-      avatarUrl = url;
+      uploadUrl = url;
+      avatarKey = key;
+      publicDownloadUrl = publicUrl;
     }
     const accessToken = this.tokenService.generateAccessToken(user.id);
     const refreshToken = this.tokenService.generateRefreshToken(user.id);
@@ -140,6 +154,8 @@ export class AuthService {
       JSON.stringify({
         userId: user.id,
         avatarUrl,
+        publicDownloadUrl,
+        avatarKey,
       }),
     );
 
@@ -147,6 +163,9 @@ export class AuthService {
       accessToken,
       refreshToken,
       avatarUrl: avatarUrl,
+      avatarKey: avatarKey,
+      uploadUrl: uploadUrl,
+      publicUrl: publicDownloadUrl,
     };
   }
 

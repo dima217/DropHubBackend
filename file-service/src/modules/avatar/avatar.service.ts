@@ -48,7 +48,7 @@ export class AvatarService implements OnModuleInit {
       this.defaultAvatarKeys[i] = key;
     }
     this.defaultAvatarUrls = await Promise.all(
-      this.defaultAvatarKeys.map((key) => this.getDownloadUrl(key))
+      this.defaultAvatarKeys.map((key) => this.getPublicUrl(key))
     );
   }
 
@@ -59,9 +59,13 @@ export class AvatarService implements OnModuleInit {
     const url = this.defaultAvatarUrls[number - 1];
     if (!url) {
       const key = this.defaultAvatarKeys[number - 1];
-      return this.getDownloadUrl(key);
+      return this.getPublicUrl(key);
     }
-    return {url: url};
+    return { url: url };
+  }
+
+  private getPublicUrl(key: string): string {
+    return `http://10.11.251.195:9000/${this.avatarBucket}/${key}`;
   }
 
   async getUploadUrl(userId: string, contentType: string) {
@@ -75,15 +79,7 @@ export class AvatarService implements OnModuleInit {
     const url = await getSignedUrl(this.s3Service.client, command, {
       expiresIn: 3600,
     });
-    return { url, key };
-  }
-
-  async getDownloadUrl(key: string) {
-    const command = new GetObjectCommand({
-      Bucket: this.avatarBucket,
-      Key: key,
-    });
-    return getSignedUrl(this.s3Service.client, command, { expiresIn: 3600 });
+    return { url: url, key: key, publicUrl: this.getPublicUrl(key) };
   }
 
   async getAvatarsByKeys(keys: string[]) {
@@ -99,7 +95,7 @@ export class AvatarService implements OnModuleInit {
             return null;
           }
         }
-        return this.getDownloadUrl(key);
+        return this.getPublicUrl(key);
       })
     );
     return { urls: urls };

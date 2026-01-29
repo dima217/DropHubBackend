@@ -23,11 +23,10 @@ export class AvatarClientService {
   }
 
   async getUploadUrl(params: GetUploadUrlParams) {
-    return this.send<{ url: string; key: string }>('avatar.getUploadUrl', params);
-  }
-
-  async getDownloadUrl(key: string) {
-    return this.send<{ url: string }>('avatar.getDownloadUrl', { key });
+    return this.send<{ url: string; key: string; publicUrl: string }>(
+      'avatar.getUploadUrl',
+      params,
+    );
   }
 
   async getAvatarsByKeys(keys: string[]) {

@@ -12,12 +12,6 @@ export class AvatarController {
     return this.avatarService.getUploadUrl(userId, contentType);
   }
 
-  @MessagePattern("avatar.getDownloadUrl")
-  async getDownloadUrl(@Payload() data: { key: string }) {
-    const { key } = data;
-    return this.avatarService.getDownloadUrl(key);
-  }
-
   @MessagePattern("avatar.getAvatarsByKeys")
   async getAvatarsByKeys(@Payload() data: { keys: string[] }) {
     const { keys } = data;

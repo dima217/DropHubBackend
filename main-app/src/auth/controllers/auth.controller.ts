@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Logger, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  Logger,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from '../services/auth.service';
 import { LocalGuard } from '../guards/local-guard';
@@ -86,6 +96,8 @@ export class AuthController {
             `Failed to send signup code to ${signUpInitDto.email}: ${error instanceof Error ? error.message : String(error)}`,
           );
         });
+    } else {
+      throw new ConflictException('User with this email already exists');
     }
   }
 
