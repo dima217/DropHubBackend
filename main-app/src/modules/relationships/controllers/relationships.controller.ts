@@ -7,18 +7,34 @@ import {
   Param,
   ParseIntPipe,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiOkResponse,
+  ApiForbiddenResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+} from '@nestjs/swagger';
 import { SendRequestDto } from '../dto/friend-request.dto';
 import { RelationshipsService } from '../services/relationships.service';
 import type { RequestWithUser } from 'src/types/express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
+import { FriendService } from '../services/friend.service';
+import { FriendWithProfileDto } from '../dto/friend-with-profile.dto';
 
 @ApiTags('Relationships')
 @Controller('relationships')
 @UseGuards(JwtAuthGuard)
 export class RelationshipsController {
-  constructor(private readonly relationshipsService: RelationshipsService) {}
+  constructor(
+    private readonly relationshipsService: RelationshipsService,
+    private readonly friendService: FriendService,
+  ) {}
 
   @Post('request')
   @ApiOperation({
@@ -69,6 +85,48 @@ export class RelationshipsController {
       }
       throw error;
     }
+  }
+
+  @Post('/friends')
+  @ApiOperation({
+    summary: 'Get current user friends',
+    description:
+      'Returns a list of friends with friendship id and public friend profile information',
+  })
+  @ApiOkResponse({
+    description: 'Friends list successfully retrieved',
+    type: FriendWithProfileDto,
+    isArray: true,
+  })
+  async getFriends(@Req() req: RequestWithUser) {
+    return this.friendService.getFriendsWithProfiles(req.user.id);
+  }
+
+  @Delete('friends/:friendshipId')
+  @ApiOperation({
+    summary: 'Remove friend',
+    description: 'Removes a friend relationship. Only participants can remove the friendship.',
+  })
+  @ApiParam({
+    name: 'friendshipId',
+    description: 'Friendship ID',
+    type: Number,
+    example: 12,
+  })
+  @ApiNoContentResponse({
+    description: 'Friend removed successfully',
+  })
+  @ApiForbiddenResponse({
+    description: 'User is not part of this friendship',
+  })
+  @ApiNotFoundResponse({
+    description: 'Friendship not found',
+  })
+  async removeFriend(
+    @Req() req: RequestWithUser,
+    @Param('friendshipId', ParseIntPipe) friendshipId: number,
+  ): Promise<void> {
+    return await this.friendService.removeFriend(req.user.id, friendshipId);
   }
 
   @Post('accept/:requestId')
@@ -154,6 +212,6 @@ export class RelationshipsController {
 
   @Post('/requests')
   async getRequests(@Req() req: RequestWithUser) {
-    await this.relationshipsService.getAllRequestsForUser(req.user.id);
+    return await this.relationshipsService.getAllRequestsForUser(req.user.id);
   }
 }

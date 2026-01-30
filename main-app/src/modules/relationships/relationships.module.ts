@@ -8,6 +8,8 @@ import { RelationshipsService } from './services/relationships.service';
 import { FriendService } from './services/friend.service';
 import { UserModule } from '../user/user.module';
 import { CentrifugoModule } from '../notification/centrifugo.module';
+import { FriendsGateway } from './gateway/friends.gateway';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -15,9 +17,11 @@ import { CentrifugoModule } from '../notification/centrifugo.module';
     PassportModule,
     UserModule,
     CentrifugoModule,
+    UserModule,
+    AuthModule,
   ],
   controllers: [RelationshipsController],
-  providers: [RelationshipsService, FriendService],
+  providers: [RelationshipsService, FriendService, FriendsGateway],
   exports: [FriendService, RelationshipsService],
 })
 export class RelationshipsModule {}

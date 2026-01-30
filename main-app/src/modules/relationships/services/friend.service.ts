@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Friend } from '../entities/friend.entity';
 import { normalizeIds } from '../utils/additional.functions';
+import { FriendWithProfileDto } from '../dto/friend-with-profile.dto';
 
 @Injectable()
 export class FriendService {
@@ -35,18 +36,42 @@ export class FriendService {
     });
   }
 
-  async removeFriend(currentUserId: number, friendIdToRemove: number): Promise<void> {
-    const { userOneId, userTwoId } = normalizeIds(currentUserId, friendIdToRemove);
-
-    const deleteResult = await this.friendRepository.delete({
-      userOneId: userOneId,
-      userTwoId: userTwoId,
+  async getFriendsWithProfiles(userId: number): Promise<FriendWithProfileDto[]> {
+    const friendships = await this.friendRepository.find({
+      where: [{ userOneId: userId }, { userTwoId: userId }],
+      relations: ['userOne.profile', 'userTwo.profile'],
     });
 
-    if (deleteResult.affected === 0) {
-      throw new NotFoundException(
-        `Friendship between users ${currentUserId} and ${friendIdToRemove} not found.`,
-      );
+    if (friendships.length === 0) {
+      return [];
     }
+    return friendships.map((friendship) => {
+      const friendUser = friendship.userOneId === userId ? friendship.userTwo : friendship.userOne;
+
+      return {
+        friendshipId: friendship.id,
+        friendProfile: {
+          id: friendUser.id,
+          avatarUrl: friendUser.profile.avatarUrl ?? '',
+          firstName: friendUser.profile.firstName,
+        },
+      };
+    });
+  }
+
+  async removeFriend(currentUserId: number, friendshipId: number): Promise<void> {
+    const friendship = await this.friendRepository.findOne({
+      where: { id: friendshipId },
+    });
+
+    if (!friendship) {
+      throw new NotFoundException(`Friendship ${friendshipId} not found.`);
+    }
+
+    if (friendship.userOneId !== currentUserId && friendship.userTwoId !== currentUserId) {
+      throw new ForbiddenException('You are not part of this friendship.');
+    }
+
+    await this.friendRepository.delete({ id: friendshipId });
   }
 }

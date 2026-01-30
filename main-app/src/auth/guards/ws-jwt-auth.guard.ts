@@ -25,7 +25,7 @@ export class WsJwtAuthGuard implements CanActivate {
       throw new WsException('Unauthorized: No token provided');
     }
 
-    //this.logger.warn(token);
+    this.logger.warn(`Token: ${token}`);
 
     try {
       const payload = this.jwtService.verify<JwtPayload>(token);

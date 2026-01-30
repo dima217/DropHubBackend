@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import * as argon2 from 'argon2';
 import { User } from '../entities/user.entity';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -49,8 +49,10 @@ export class UsersService {
 
   async findByProfileId(profileId: number): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { profileId },
-      select: ['id', 'email'],
+      where: {
+        profile: { id: profileId },
+      },
+      relations: ['profile'],
     });
   }
 
@@ -110,9 +112,11 @@ export class UsersService {
     if (ids.length === 0) {
       return [];
     }
+
     return this.userRepository.find({
-      where: ids.map((id) => ({ id })),
-      select: [...USER_SELECT_FIELDS],
+      where: {
+        id: In(ids),
+      },
       relations: ['profile'],
     });
   }

@@ -5,6 +5,12 @@ import { UsersService } from 'src/modules/user/services/user.service';
 import { FriendRequest, RequestStatus } from '../entities/friend-request.entity';
 import { CentrifugoService } from 'src/modules/notification/centrifugo.service';
 import { FriendService } from './friend.service';
+import {
+  FriendRequestDirection,
+  FriendRequestWithProfileDto,
+} from '../dto/friend-request-with-profile.dto';
+import { FriendRequestMapper } from '../mappers/friend-request.mapper';
+import { FriendsGateway } from '../gateway/friends.gateway';
 
 @Injectable()
 export class RelationshipsService {
@@ -13,6 +19,7 @@ export class RelationshipsService {
     private readonly requestRepository: Repository<FriendRequest>,
     private readonly friendService: FriendService,
     private readonly usersService: UsersService,
+    private readonly friendsGateway: FriendsGateway,
     private readonly centrifugo: CentrifugoService,
   ) {}
 
@@ -37,12 +44,17 @@ export class RelationshipsService {
     const request = this.requestRepository.create({ senderId, receiverId });
     await this.requestRepository.save(request);
 
-    await this.centrifugo.publish(`personal#${receiverId}`, {
-      type: 'friend_request_received',
-      title: 'New friend request',
-      message: `User ${senderId} sent you a friend request.`,
-      senderId,
+    const fullRequest = await this.requestRepository.findOne({
+      where: { id: request.id },
+      relations: ['sender.profile', 'receiver.profile'],
     });
+
+    if (fullRequest) {
+      this.friendsGateway.sendIncomingFriendRequest(
+        receiverId,
+        FriendRequestMapper.toDto(fullRequest, receiverId),
+      );
+    }
 
     return request;
   }
@@ -56,13 +68,6 @@ export class RelationshipsService {
     await this.friendService.createMutualFriends(request.senderId, receiverId);
     request.status = RequestStatus.ACCEPTED;
     await this.requestRepository.save(request);
-
-    await this.centrifugo.publish(`personal#${request.senderId}`, {
-      type: 'friend_request_accepted',
-      title: 'Friend request accepted',
-      message: `User ${receiverId} accepted your friend request.`,
-      receiverId,
-    });
   }
 
   async rejectRequest(receiverId: number, requestId: number): Promise<void> {
@@ -73,13 +78,6 @@ export class RelationshipsService {
 
     request.status = RequestStatus.REJECTED;
     await this.requestRepository.save(request);
-
-    await this.centrifugo.publish(`personal#${request.senderId}`, {
-      type: 'friend_request_rejected',
-      title: 'Friend request rejected',
-      message: `User ${receiverId} rejected your friend request.`,
-      receiverId,
-    });
   }
 
   async cancelRequest(senderId: number, requestId: number): Promise<void> {
@@ -90,32 +88,30 @@ export class RelationshipsService {
 
     request.status = RequestStatus.CANCELED;
     await this.requestRepository.save(request);
-
-    await this.centrifugo.publish(`personal#${request.receiverId}`, {
-      type: 'friend_request_cancelled',
-      title: 'Friend request cancelled',
-      message: `User ${senderId} cancelled the friend request.`,
-      senderId,
-    });
   }
 
-  async getAllRequestsForUser(userId: number): Promise<
-    {
-      id: number;
-      senderId: number;
-      receiverId: number;
-      status: RequestStatus;
-    }[]
-  > {
+  async getAllRequestsForUser(userId: number): Promise<FriendRequestWithProfileDto[]> {
     const requests = await this.requestRepository.find({
       where: [{ sender: { id: userId } }, { receiver: { id: userId } }],
+      relations: ['sender.profile', 'receiver.profile'],
       order: { createdAt: 'DESC' },
     });
-    return requests.map((r) => ({
-      id: r.id,
-      senderId: r.senderId,
-      receiverId: r.receiverId,
-      status: r.status,
-    }));
+
+    return requests.map((request) => {
+      const isOutgoing = request.senderId === userId;
+
+      const otherUser = isOutgoing ? request.receiver : request.sender;
+
+      return {
+        requestId: request.id,
+        status: request.status,
+        direction: isOutgoing ? FriendRequestDirection.OUTGOING : FriendRequestDirection.INCOMING,
+        profile: {
+          id: otherUser.id,
+          avatarUrl: otherUser.profile.avatarUrl ?? '',
+          firstName: otherUser.profile.firstName,
+        },
+      };
+    });
   }
 }
