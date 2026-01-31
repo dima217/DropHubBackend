@@ -1,22 +1,22 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { FileUploadStatus } from '../../../constants/interfaces';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { FileUploadStatus } from "../../../constants/interfaces";
 
 export type RoomDocument = Room & Document;
 
 @Schema({ timestamps: true })
 export class Room {
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'SharedFile' }], default: [] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: "SharedFile" }], default: [] })
   files: Types.ObjectId[];
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'UploadSession' }], default: [] })
-  groups: Types.ObjectId[];
+  @Prop({ type: [{ type: Types.ObjectId, ref: "UploadSession" }], default: [] })
+  groups?: Types.ObjectId[];
 
   @Prop({ required: true, default: () => new Date() })
   createdAt: Date;
 
-  @Prop({ type: [String], default: [] })
-  participants: string[];
+  @Prop({ type: Number, default: 0 })
+  participants: number;
 
   @Prop({ type: String })
   owner?: string;
@@ -38,7 +38,7 @@ export class Room {
       status: FileUploadStatus.IN_PROGRESS,
     }),
   })
-  uploadSession: {
+  uploadSession?: {
     uploadId?: string;
     status: FileUploadStatus;
   };
@@ -51,4 +51,3 @@ export class Room {
 }
 
 export const RoomSchema = SchemaFactory.createForClass(Room);
-

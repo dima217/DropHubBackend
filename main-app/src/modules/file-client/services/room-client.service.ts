@@ -38,8 +38,8 @@ export class RoomClientService {
     return this.send<RoomDto[], { roomIds: string[] }>('room.getByIds', { roomIds });
   }
 
-  async updateParticipantsCount(roomId: string, count: number): Promise<void> {
-    return this.send<void, { roomId: string; count: number }>('room.updateParticipants', {
+  updateParticipantsCount(roomId: string, count: number) {
+    this.fileClient.emit('room.updateParticipants', {
       roomId,
       count,
     });

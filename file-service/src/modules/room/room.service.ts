@@ -4,12 +4,17 @@ import {
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
-} from '@nestjs/common';
-import { Model } from 'mongoose';
-import { InjectModel } from '@nestjs/mongoose';
-import { Room, RoomDocument } from './schemas/room.schema';
-import { PermissionClientService, AccessRole, ResourceType } from '../permission-client/permission-client.service';
-import { IRoomService } from './interfaces/room-service.interface';
+} from "@nestjs/common";
+import { Model } from "mongoose";
+import { InjectModel } from "@nestjs/mongoose";
+import { Room, RoomDocument } from "./schemas/room.schema";
+import {
+  PermissionClientService,
+  AccessRole,
+  ResourceType,
+} from "../permission-client/permission-client.service";
+import { IRoomService } from "./interfaces/room-service.interface";
+import { FileService } from "../file/file.service";
 
 interface AuthenticationDeleteRoomParams {
   userId: number;
@@ -19,6 +24,7 @@ interface AuthenticationDeleteRoomParams {
 interface AuthenticationCreateRoomParams {
   userId: number;
   username?: string;
+  expiresAt?: string;
 }
 
 @Injectable()
@@ -26,6 +32,7 @@ export class RoomService implements IRoomService {
   constructor(
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     private readonly permissionClient: PermissionClientService,
+    private readonly fileService: FileService
   ) {}
 
   async getRoomsByUserID(userId: number) {
@@ -36,21 +43,32 @@ export class RoomService implements IRoomService {
 
   async createRoom(params: AuthenticationCreateRoomParams) {
     try {
+      const expiresAt = params.expiresAt
+        ? new Date(params.expiresAt)
+        : undefined;
+
+      if (expiresAt && isNaN(expiresAt.getTime())) {
+        throw new BadRequestException("Invalid expiresAt date");
+      }
+
       const newRoom = new this.roomModel({
         createdAt: new Date(),
         maxBytes: 5000,
-        owner: params.username ?? '',
+        owner: params.username ?? "",
+        expiresAt,
       });
 
       const savedRoom = await newRoom.save();
       const roomId = savedRoom.id.toString();
-      
+
       return {
         success: true,
         roomId,
       };
     } catch (err) {
-      throw new InternalServerErrorException('Failed to create room', { cause: err });
+      throw new InternalServerErrorException("Failed to create room", {
+        cause: err,
+      });
     }
   }
 
@@ -60,6 +78,29 @@ export class RoomService implements IRoomService {
       return null;
     }
     return this.mapRoomToDto(room);
+  }
+
+  async getExpiredRooms() {
+    const now = new Date();
+    return await this.roomModel.find({
+      expiresAt: { $lte: now },
+    });
+  }
+
+  async deleteRoomWithFiles(roomId: string): Promise<boolean> {
+    const room = await this.roomModel.findById(roomId).lean();
+
+    if (!room) {
+      return false;
+    }
+    if (room.files?.length) {
+      await this.fileService.deleteFilesCompletely(
+        room.files.map((f) => f.toString())
+      );
+    }
+    await this.roomModel.deleteOne({ _id: roomId });
+
+    return true;
   }
 
   async getRoomsByIds(roomIds: string[]) {
@@ -85,7 +126,7 @@ export class RoomService implements IRoomService {
       maxBytes: room.maxBytes || 0,
       uploadSession: room.uploadSession || {
         uploadId: undefined,
-        status: 'IN_PROGRESS',
+        status: "IN_PROGRESS",
       },
     };
   }
@@ -98,13 +139,13 @@ export class RoomService implements IRoomService {
 
   async updateParticipantsCount(roomId: string, count: number) {
     await this.roomModel.findByIdAndUpdate(roomId, {
-      $set: { participants: Array(count).fill('') },
+      $set: { participants: count },
     });
   }
 
   async deleteRoom(params: AuthenticationDeleteRoomParams) {
     if (!params.roomId) {
-      throw new BadRequestException('Room ID is required.');
+      throw new BadRequestException("Room ID is required.");
     }
 
     // Permission check is performed in main-app before calling this service
@@ -113,10 +154,10 @@ export class RoomService implements IRoomService {
       const deletedRoom = await this.roomModel.findByIdAndDelete(params.roomId);
 
       if (!deletedRoom) {
-        throw new NotFoundException('Room not found.');
+        throw new NotFoundException("Room not found.");
       }
-      
-      return { message: 'Room deleted successfully' };
+
+      return { message: "Room deleted successfully" };
     } catch (err) {
       if (
         err instanceof NotFoundException ||
@@ -125,8 +166,9 @@ export class RoomService implements IRoomService {
       ) {
         throw err;
       }
-      throw new InternalServerErrorException('Failed to delete room', { cause: err });
+      throw new InternalServerErrorException("Failed to delete room", {
+        cause: err,
+      });
     }
   }
 }
-

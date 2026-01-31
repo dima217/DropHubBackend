@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Friend } from '../entities/friend.entity';
 import { normalizeIds } from '../utils/additional.functions';
 import { FriendWithProfileDto } from '../dto/friend-with-profile.dto';
@@ -57,6 +57,39 @@ export class FriendService {
         },
       };
     });
+  }
+
+  async getFriendProfilesByFriendshipIds(
+    currentUserId: number,
+    friendshipIds: number[],
+  ): Promise<FriendWithProfileDto[]> {
+    if (!friendshipIds.length) return [];
+
+    const friendships = await this.friendRepository.find({
+      where: {
+        id: In(friendshipIds),
+      },
+      relations: ['userOne.profile', 'userTwo.profile'],
+    });
+
+    return friendships
+      .filter(
+        (friendship) =>
+          friendship.userOneId === currentUserId || friendship.userTwoId === currentUserId,
+      )
+      .map((friendship) => {
+        const friendUser =
+          friendship.userOneId === currentUserId ? friendship.userTwo : friendship.userOne;
+
+        return {
+          friendshipId: friendship.id,
+          friendProfile: {
+            id: friendUser.id,
+            avatarUrl: friendUser.profile.avatarUrl ?? '',
+            firstName: friendUser.profile.firstName,
+          },
+        };
+      });
   }
 
   async removeFriend(currentUserId: number, friendshipId: number): Promise<void> {

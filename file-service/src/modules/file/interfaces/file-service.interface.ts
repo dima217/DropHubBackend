@@ -1,7 +1,7 @@
-import { FileDocument } from '../schemas/file.schema';
-import { RoomDocument } from '../../room/schemas/room.schema';
-import { CreateFileMetaDto } from '../dto/create-file-meta.dto';
-import { DeleteFileDto } from '../dto/delete-file.dto';
+import { FileDocument } from "../schemas/file.schema";
+import { RoomDocument } from "../../room/schemas/room.schema";
+import { CreateFileMetaDto } from "../dto/create-file-meta.dto";
+import { DeleteFileDto } from "../dto/delete-file.dto";
 
 export interface AuthenticatedGettingFilesByRoomParams {
   roomId: string;
@@ -38,11 +38,13 @@ export interface IFileService {
   createFileMeta(dto: CreateFileMetaDto): Promise<FileDocument>;
   invalidateRoomCache(roomId: string): Promise<void>;
   deleteFiles(dto: DeleteFileDto): Promise<(FileDocument | null)[]>;
-  getFilesByRoomID(params: AuthenticatedGettingFilesByRoomParams): Promise<RoomWithFiles>;
+  getFilesByRoomID(
+    params: AuthenticatedGettingFilesByRoomParams
+  ): Promise<RoomWithFiles>;
   getFileById(fileId: string): Promise<FileMeta>;
   getFileByUploadId(uploadId: string): Promise<any>;
   getExpiredFiles(beforeDate?: Date): Promise<any[]>;
-  deleteFileCompletely(storedName: string): Promise<void>;
+  deleteFilesCompletely(fileIds: string[]): Promise<void>;
   searchFiles(params: {
     roomIds: string[];
     query?: string;
@@ -73,4 +75,3 @@ export interface IFileService {
     archivedFilesCount: number;
   }>;
 }
-

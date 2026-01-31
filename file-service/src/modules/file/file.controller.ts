@@ -1,115 +1,118 @@
-import { Controller, Inject } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
-import { UploadInitMultipartDto } from './dto/upload/upload-init-multipart.dto';
+import { Controller, Inject } from "@nestjs/common";
+import { MessagePattern, Payload } from "@nestjs/microservices";
+import { UploadInitMultipartDto } from "./dto/upload/upload-init-multipart.dto";
 import {
   FILE_SERVICE_TOKEN,
   UPLOAD_SERVICE_TOKEN,
   DOWNLOAD_SERVICE_TOKEN,
   MULTIPART_UPLOAD_SERVICE_TOKEN,
   PREVIEW_SERVICE_TOKEN,
-} from './interfaces/file-service.tokens';
+} from "./interfaces/file-service.tokens";
 import type {
   IFileService,
   IUploadService,
   IDownloadService,
   IMultipartUploadService,
   IPreviewService,
-} from './interfaces';
+} from "./interfaces";
 
 @Controller()
 export class FileController {
   constructor(
     @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
-    @Inject(UPLOAD_SERVICE_TOKEN) private readonly uploadService: IUploadService,
+    @Inject(UPLOAD_SERVICE_TOKEN)
+    private readonly uploadService: IUploadService,
     @Inject(DOWNLOAD_SERVICE_TOKEN)
     private readonly downloadService: IDownloadService,
     @Inject(MULTIPART_UPLOAD_SERVICE_TOKEN)
     private readonly multipartUploadService: IMultipartUploadService,
     @Inject(PREVIEW_SERVICE_TOKEN)
-    private readonly previewService: IPreviewService,
+    private readonly previewService: IPreviewService
   ) {}
 
-  @MessagePattern('file.create')
+  @MessagePattern("file.create")
   async createFile(@Payload() data: any) {
     return this.fileService.createFileMeta(data);
   }
 
-  @MessagePattern('file.getById')
+  @MessagePattern("file.getById")
   async getFileById(@Payload() data: { fileId: string }) {
     return this.fileService.getFileById(data.fileId);
   }
 
-  @MessagePattern('file.getByUploadId')
+  @MessagePattern("file.getByUploadId")
   async getFileByUploadId(@Payload() data: { uploadId: string }) {
     return this.fileService.getFileByUploadId(data.uploadId);
   }
 
-  @MessagePattern('file.getByRoom')
+  @MessagePattern("file.getByRoom")
   async getFilesByRoom(@Payload() data: { roomId: string; userId: number }) {
     return this.fileService.getFilesByRoomID(data);
   }
 
-  @MessagePattern('file.delete')
+  @MessagePattern("file.delete")
   async deleteFiles(@Payload() data: { fileIds: string[] }) {
     return this.fileService.deleteFiles(data);
   }
 
   // Upload operations
-  @MessagePattern('file.uploadToRoom')
+  @MessagePattern("file.uploadToRoom")
   async uploadFileToRoom(@Payload() data: any) {
     return this.uploadService.uploadFileToRoom(data);
   }
 
-  @MessagePattern('file.uploadToStorage')
+  @MessagePattern("file.uploadToStorage")
   async uploadFileToStorage(@Payload() data: any) {
     return this.uploadService.uploadFileToStorage(data);
   }
 
-  @MessagePattern('file.uploadByToken')
+  @MessagePattern("file.uploadByToken")
   async uploadFileByToken(@Payload() data: any) {
     return this.uploadService.uploadFileByToken(data);
   }
 
   // Download operations
-  @MessagePattern('file.getDownloadLink')
+  @MessagePattern("file.getDownloadLink")
   async getDownloadLink(@Payload() data: { fileId: string; userId: number }) {
     return this.downloadService.getDownloadLinkAuthenticated(data);
   }
 
-  @MessagePattern('file.getDownloadLinkByToken')
+  @MessagePattern("file.getDownloadLinkByToken")
   async getDownloadLinkByToken(@Payload() data: { downloadToken: string }) {
     return this.downloadService.downloadFileByToken(data);
   }
 
-  @MessagePattern('file.getStream')
+  @MessagePattern("file.getStream")
   async getStream(@Payload() data: { key: string }) {
     return this.downloadService.getStream(data.key);
   }
 
   // Multipart upload
-  @MessagePattern('file.multipart.init')
-  async initMultipart(@Payload() data: UploadInitMultipartDto & { ip?: string }) {
+  @MessagePattern("file.multipart.init")
+  async initMultipart(
+    @Payload() data: UploadInitMultipartDto & { ip?: string }
+  ) {
     const { ip, ...params } = data;
-    return this.multipartUploadService.initUploadMultipart(params, ip || '');
+    return this.multipartUploadService.initUploadMultipart(params, ip || "");
   }
 
-  @MessagePattern('file.multipart.complete')
+  @MessagePattern("file.multipart.complete")
   async completeMultipart(@Payload() data: any) {
     return this.multipartUploadService.completeMultipart(data);
   }
 
-  @MessagePattern('file.getExpired')
+  @MessagePattern("file.getExpired")
   async getExpiredFiles(@Payload() data: { beforeDate?: Date }) {
     return this.fileService.getExpiredFiles(data.beforeDate);
   }
 
-  @MessagePattern('file.deleteCompletely')
-  async deleteFileCompletely(@Payload() data: { storedName: string }) {
-    await this.fileService.deleteFileCompletely(data.storedName);
+  @MessagePattern("file.deleteCompletely")
+  async deleteFileCompletely(@Payload() data: { fileIds: string[] }) {
+    await this.fileService.deleteFilesCompletely(data.fileIds);
     return { success: true };
   }
 
-  @MessagePattern('file.search')
+  @MessagePattern("file.search")
   async searchFiles(
     @Payload()
     data: {
@@ -119,28 +122,30 @@ export class FileController {
       creatorId?: number;
       limit?: number;
       offset?: number;
-    },
+    }
   ) {
     return this.fileService.searchFiles(data);
   }
 
   // Preview operations
-  @MessagePattern('file.getPreviewUrl')
+  @MessagePattern("file.getPreviewUrl")
   async getPreviewUrl(@Payload() data: { fileId: string; userId: number }) {
     return this.previewService.getPreviewUrl(data);
   }
 
-  @MessagePattern('file.getVideoThumbnailUrl')
-  async getVideoThumbnailUrl(@Payload() data: { fileId: string; userId: number }) {
+  @MessagePattern("file.getVideoThumbnailUrl")
+  async getVideoThumbnailUrl(
+    @Payload() data: { fileId: string; userId: number }
+  ) {
     return this.previewService.getVideoThumbnailUrl(data);
   }
 
-  @MessagePattern('file.getVideoStreamUrl')
+  @MessagePattern("file.getVideoStreamUrl")
   async getVideoStreamUrl(@Payload() data: { fileId: string; userId: number }) {
     return this.previewService.getVideoStreamUrl(data);
   }
 
-  @MessagePattern('file.archiveRoom')
+  @MessagePattern("file.archiveRoom")
   async archiveRoom(
     @Payload()
     data: {
@@ -149,7 +154,7 @@ export class FileController {
       parentId: string | null;
       userId: number;
       fileIds?: string[];
-    },
+    }
   ) {
     return this.fileService.archiveRoom(data);
   }

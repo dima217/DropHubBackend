@@ -1,22 +1,18 @@
 export interface RoomDto {
   id: string;
   files: string[];
-  groups: string[];
   createdAt: string;
-  participants: string[];
+  participants: number;
   owner?: string;
   expiresAt?: string | null;
   maxBytes: number;
-  uploadSession: {
-    uploadId?: string;
-    status: string;
-  };
   userRole?: string;
 }
 
 export interface CreateRoomPayload {
   userId: number;
   username?: string;
+  expiresAt?: string;
 }
 
 export interface CreateRoomResult {

@@ -14,8 +14,8 @@ export class RoomService {
     private readonly userService: UsersService,
   ) {}
 
-  async createRoom(userId: number, username?: string) {
-    const result = await this.roomClient.createRoom({ userId, username });
+  async createRoom(userId: number, username: string, expiresAt?: string) {
+    const result = await this.roomClient.createRoom({ userId, username, expiresAt });
 
     await this.permissionService.createPermission({
       userId,
@@ -24,7 +24,7 @@ export class RoomService {
       role: AccessRole.ADMIN,
     });
 
-    await this.roomClient.updateParticipantsCount(result.roomId, 1);
+    this.roomClient.updateParticipantsCount(result.roomId, 1);
 
     return result;
   }
@@ -103,7 +103,7 @@ export class RoomService {
         roomId,
         ResourceType.ROOM,
       );
-      await this.roomClient.updateParticipantsCount(roomId, allPermissions.length);
+      this.roomClient.updateParticipantsCount(roomId, allPermissions.length);
     }
 
     return {
@@ -198,7 +198,7 @@ export class RoomService {
         roomId,
         ResourceType.ROOM,
       );
-      await this.roomClient.updateParticipantsCount(roomId, allPermissions.length);
+      this.roomClient.updateParticipantsCount(roomId, allPermissions.length);
     }
 
     return {

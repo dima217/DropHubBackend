@@ -1,4 +1,14 @@
-import { Body, Controller, Post, Delete, UseGuards, Req, Get, Param } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Delete,
+  UseGuards,
+  Req,
+  Get,
+  Param,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import type { DeleteRoomBody } from '../interfaces/room-request.interface';
 import { RoomClientService } from '../../file-client/services/room-client.service';
@@ -79,7 +89,10 @@ export class RoomController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createRoom(@Req() req: RequestWithUser, @Body() body: CreateRoomDto) {
-    return this.roomService.createRoom(req.user.id, body.username);
+    if (!body.username) {
+      throw new BadRequestException('Username is required');
+    }
+    return this.roomService.createRoom(req.user.id, body.username, body.expiresAt);
   }
 
   @Delete()

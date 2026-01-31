@@ -22,8 +22,8 @@ export class RoomDetailsDto {
   @ApiProperty({ example: '2024-01-01T12:00:00.000Z' })
   createdAt: string;
 
-  @ApiProperty({ type: [String], example: ['user1', 'user2'] })
-  participants: string[];
+  @ApiProperty({ type: [Number], example: 1 })
+  participants: number;
 
   @ApiPropertyOptional({ example: 'user-owner-id' })
   owner?: string;

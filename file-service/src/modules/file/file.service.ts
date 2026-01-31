@@ -56,15 +56,16 @@ const roomFilesSchema = z.object({
 
 @Injectable()
 export class FileService implements IFileService {
-  private readonly FILE_META_TTL = 300; 
-  private readonly ROOM_FILES_TTL = 120; 
+  private readonly FILE_META_TTL = 300;
+  private readonly ROOM_FILES_TTL = 120;
 
   constructor(
     @InjectModel(File.name) private readonly fileModel: Model<FileDocument>,
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     private readonly s3Service: S3Service,
     private readonly cacheService: CacheService,
-    @Inject(forwardRef(() => STORAGE_SERVICE_TOKEN)) private readonly storageService: IStorageService,
+    @Inject(forwardRef(() => STORAGE_SERVICE_TOKEN))
+    private readonly storageService: IStorageService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string
   ) {}
 
@@ -144,7 +145,7 @@ export class FileService implements IFileService {
         return room;
       },
       roomFilesSchema,
-      this.ROOM_FILES_TTL,
+      this.ROOM_FILES_TTL
     );
   }
 
@@ -171,7 +172,7 @@ export class FileService implements IFileService {
         return fileDoc;
       },
       fileMetaSchema,
-      this.FILE_META_TTL,
+      this.FILE_META_TTL
     );
   }
 
@@ -204,65 +205,38 @@ export class FileService implements IFileService {
       .exec();
   }
 
-  async deleteFileCompletely(storedName: string): Promise<void> {
-    const file = await this.fileModel.findOne({ storedName }).exec();
+  async deleteFilesCompletely(fileIds: string[]): Promise<void> {
+    if (!fileIds.length) return;
 
-    if (!file) {
-      console.warn(`File with storedName ${storedName} not found in database`);
-      await this.deleteFromS3(storedName);
+    const files = await this.fileModel
+      .find({ _id: { $in: fileIds } })
+      .lean()
+      .exec();
+
+    if (!files.length) {
+      console.warn("No files found for deletion");
       return;
     }
 
-    const fileId = (file._id as any).toString();
-
-    let roomId: string | null = null;
-    try {
-      const room = await this.roomModel.findOne({ files: fileId }).exec();
-      if (room) {
-        roomId = (room._id as any).toString();
-      }
-    } catch (err) {
-      console.error(`Error finding room for file: ${fileId}`, err);
-    }
-
-    try {
-      await this.deleteFromS3(storedName);
-      console.log(`File deleted from S3: ${storedName}`);
-    } catch (err) {
-      console.error(`Error deleting file from S3: ${storedName}`, err);
-    }
-
-    try {
-      await this.cacheService.delete(`file:meta:${fileId}`);
-      await this.cacheService.delete(`download:url:${file.key}`);
-      if (roomId) {
-        await this.cacheService.delete(`room:files:${roomId}`);
-      }
-    } catch (err) {
-      console.error(`Error invalidating cache for file ${fileId}`, err);
-    }
-
-    if (roomId) {
+    for (const file of files) {
       try {
-        await this.roomModel
-          .findByIdAndUpdate(roomId, { $pull: { files: fileId } })
-          .exec();
-        console.log(`File removed from room ${roomId}: ${fileId}`);
+        await this.deleteFromS3(file.storedName);
       } catch (err) {
-        console.error(
-          `Error removing file from room ${roomId}: ${fileId}`,
-          err
-        );
+        console.error(`Failed to delete from S3: ${file.storedName}`, err);
       }
     }
 
-    try {
-      await this.fileModel.findByIdAndDelete(fileId).exec();
-      console.log(`File deleted from database: ${fileId}`);
-    } catch (err) {
-      console.error(`Error deleting file from database: ${fileId}`, err);
-      throw err;
+    for (const file of files) {
+      const fileId = file._id.toString();
+      try {
+        await this.cacheService.delete(`file:meta:${fileId}`);
+        await this.cacheService.delete(`download:url:${file.key}`);
+      } catch (err) {
+        console.error(`Cache cleanup failed for file ${fileId}`, err);
+      }
     }
+
+    await this.fileModel.deleteMany({ _id: { $in: fileIds } });
   }
 
   private async deleteFromS3(key: string): Promise<void> {
@@ -285,8 +259,14 @@ export class FileService implements IFileService {
     limit?: number;
     offset?: number;
   }) {
-
-    const { roomIds, query, mimeType, creatorId, limit = 50, offset = 0 } = params;
+    const {
+      roomIds,
+      query,
+      mimeType,
+      creatorId,
+      limit = 50,
+      offset = 0,
+    } = params;
 
     if (roomIds.length === 0) {
       return [];
@@ -295,8 +275,8 @@ export class FileService implements IFileService {
     const rooms = await this.roomModel
       .find({ _id: { $in: roomIds } })
       .populate<{ files: FileDocument[] }>({
-        path: 'files',
-        select: '-__v',
+        path: "files",
+        select: "-__v",
         options: { lean: true },
       })
       .lean()
@@ -322,7 +302,10 @@ export class FileService implements IFileService {
             continue;
           }
 
-          if (query && !file.originalName.toLowerCase().includes(query.toLowerCase())) {
+          if (
+            query &&
+            !file.originalName.toLowerCase().includes(query.toLowerCase())
+          ) {
             continue;
           }
 
@@ -363,38 +346,38 @@ export class FileService implements IFileService {
     const room = await this.roomModel
       .findById(roomId)
       .populate<{ files: FileDocument[] }>({
-        path: 'files',
-        select: '-__v',
+        path: "files",
+        select: "-__v",
         options: { lean: true },
       })
       .exec();
 
     if (!room) {
-      throw new NotFoundException('Room not found.');
+      throw new NotFoundException("Room not found.");
     }
 
     if (room.archived) {
-      throw new BadRequestException('Room is already archived.');
+      throw new BadRequestException("Room is already archived.");
     }
 
     let filesToArchive = room.files || [];
     if (fileIds && fileIds.length > 0) {
       filesToArchive = filesToArchive.filter((file) =>
-        fileIds.includes(String(file._id)),
+        fileIds.includes(String(file._id))
       );
     }
 
     filesToArchive = filesToArchive.filter(
       (file) =>
         file.uploadSession?.status === FileUploadStatus.COMPLETE &&
-        (!file.expiresAt || file.expiresAt > new Date()),
+        (!file.expiresAt || file.expiresAt > new Date())
     );
 
     if (filesToArchive.length === 0) {
-      throw new BadRequestException('No valid files to archive.');
+      throw new BadRequestException("No valid files to archive.");
     }
     const roomFolderName = `Room ${roomId.substring(0, 8)}`;
-    
+
     const folderItem = await this.storageService.createItemInStorage({
       storageId,
       userId,
@@ -415,8 +398,8 @@ export class FileService implements IFileService {
           isDirectory: false,
           parentId: folderId,
           fileId: String(file._id),
-        }),
-      ),
+        })
+      )
     );
 
     await this.roomModel.findByIdAndUpdate(roomId, {
