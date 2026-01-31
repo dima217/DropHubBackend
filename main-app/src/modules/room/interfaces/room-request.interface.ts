@@ -1,3 +1,3 @@
 export interface DeleteRoomBody {
-    roomId: string;
+  roomId: string;
 }

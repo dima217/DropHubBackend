@@ -5,6 +5,7 @@ import { ResourceType, AccessRole, Permission } from '../../permission/entities/
 import { RoomDto } from '../../file-client/types/room';
 import { UsersService } from '../../user/services/user.service';
 import { RoomDetailsDto } from '../dto/room.details.dto';
+import { RoomsGateway } from '../gateway/room.gateway';
 
 @Injectable()
 export class RoomService {
@@ -12,6 +13,7 @@ export class RoomService {
     private readonly roomClient: RoomClientService,
     private readonly permissionService: UniversalPermissionService,
     private readonly userService: UsersService,
+    private readonly roomsGateway: RoomsGateway,
   ) {}
 
   async createRoom(userId: number, username: string, expiresAt?: string) {
@@ -106,6 +108,11 @@ export class RoomService {
       this.roomClient.updateParticipantsCount(roomId, allPermissions.length);
     }
 
+    for (const newUserId of results.successful) {
+      this.roomsGateway.sendAddedToRoom(newUserId, room);
+    }
+    this.roomsGateway.sendRoomUpdate(room.id, 'refetch');
+
     return {
       success: results.failed.length === 0,
       message:
@@ -199,6 +206,10 @@ export class RoomService {
         ResourceType.ROOM,
       );
       this.roomClient.updateParticipantsCount(roomId, allPermissions.length);
+    }
+
+    for (const userId of targetUserIds) {
+      this.roomsGateway.sendRemovedFromRoom(userId, room.id);
     }
 
     return {
