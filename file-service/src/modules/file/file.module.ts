@@ -23,12 +23,18 @@ import {
   MULTIPART_UPLOAD_SERVICE_TOKEN,
   PREVIEW_SERVICE_TOKEN,
 } from "./interfaces/file-service.tokens";
+import { UploadSessionRepository } from "./repository/upload.session.repository";
+import {
+  UploadSession,
+  UploadSessionSchema,
+} from "./schemas/upload-session.schema";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: File.name, schema: FileSchema },
       { name: Room.name, schema: RoomSchema },
+      { name: UploadSession.name, schema: UploadSessionSchema },
     ]),
     S3Module,
     PermissionClientModule,
@@ -66,6 +72,7 @@ import {
     PreviewService,
     S3ReadStream,
     S3WriteStream,
+    UploadSessionRepository,
   ],
   exports: [
     FILE_SERVICE_TOKEN,

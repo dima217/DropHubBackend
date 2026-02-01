@@ -1,6 +1,6 @@
 import { Controller, Inject } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
-import { UploadInitMultipartDto } from "./dto/upload/upload-init-multipart.dto";
+import { UploadInitMultipartDto } from "./dto/upload/multipart/upload-init-multipart.dto";
 import {
   FILE_SERVICE_TOKEN,
   UPLOAD_SERVICE_TOKEN,
@@ -15,6 +15,8 @@ import type {
   IMultipartUploadService,
   IPreviewService,
 } from "./interfaces";
+import type { UploadData } from "./interfaces/file-request.interface";
+import { UploadConfirmDto } from "./dto/upload/upload-confirm.dto";
 
 @Controller()
 export class FileController {
@@ -56,19 +58,14 @@ export class FileController {
   }
 
   // Upload operations
-  @MessagePattern("file.uploadToRoom")
-  async uploadFileToRoom(@Payload() data: any) {
-    return this.uploadService.uploadFileToRoom(data);
+  @MessagePattern("file.initUpload")
+  async uploadFileToRoom(@Payload() data: UploadData) {
+    return this.uploadService.initUploads(data);
   }
 
-  @MessagePattern("file.uploadToStorage")
-  async uploadFileToStorage(@Payload() data: any) {
-    return this.uploadService.uploadFileToStorage(data);
-  }
-
-  @MessagePattern("file.uploadByToken")
-  async uploadFileByToken(@Payload() data: any) {
-    return this.uploadService.uploadFileByToken(data);
+  @MessagePattern("file.confirmUpload")
+  async uploadFileToStorage(@Payload() data: UploadConfirmDto) {
+    return this.uploadService.confirmUpload(data);
   }
 
   // Download operations

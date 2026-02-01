@@ -11,6 +11,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
+import { DownloadRoomFileDto } from '../dto/download/download-file-room.dto';
 
 @ApiTags('File Download')
 @Controller('/download')
@@ -48,7 +49,8 @@ export class FileDownloadController {
   @Post('/url-public')
   @ApiOperation({
     summary: 'Get public download URL',
-    description: 'Generates a presigned download URL for a file using a download token. This is a public endpoint.',
+    description:
+      'Generates a presigned download URL for a file using a download token. This is a public endpoint.',
   })
   @ApiBody({ type: DownloadFileByTokenDto })
   @ApiResponse({
@@ -77,7 +79,8 @@ export class FileDownloadController {
   @Post('/url-private')
   @ApiOperation({
     summary: 'Get private download URL',
-    description: 'Generates a presigned download URL for a file. Requires READ, WRITE, or ADMIN permission on the file.',
+    description:
+      'Generates a presigned download URL for a file. Requires READ, WRITE, or ADMIN permission on the file.',
   })
   @ApiBody({ type: DownloadFileDto })
   @ApiResponse({
@@ -93,6 +96,40 @@ export class FileDownloadController {
   @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
   @ApiResponse({ status: 404, description: 'File not found' })
   async downloadFileByURLPrivate(@Body() body: DownloadFileDto, @Req() req: RequestWithUser) {
+    const url = await this.fileClient.getDownloadLink(body.fileId, req.user.id);
+    return { url };
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.ROOM,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'roomId',
+  )
+  @Post('/url-private/room')
+  @ApiOperation({
+    summary: 'Get private download URL for a room file',
+    description:
+      'Generates a presigned download URL for a file located in a room. Requires READ, WRITE, or ADMIN permission on the room specified by `roomId`.',
+  })
+  @ApiBody({ type: DownloadRoomFileDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Download URL generated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', example: 'https://s3.amazonaws.com/bucket/file?presigned=...' },
+      },
+    },
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions on the room' })
+  @ApiResponse({ status: 404, description: 'File not found in the room' })
+  async downloadFileByURLPrivateRoom(
+    @Body() body: DownloadRoomFileDto,
+    @Req() req: RequestWithUser,
+  ) {
     const url = await this.fileClient.getDownloadLink(body.fileId, req.user.id);
     return { url };
   }

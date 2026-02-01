@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { S3Service } from "../../../s3/s3.service";
 import { S3_BUCKET_TOKEN } from "../../../s3/s3.tokens";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -12,15 +7,13 @@ import type { IStorageService } from "../../../storage/interfaces";
 import { STORAGE_SERVICE_TOKEN } from "../../../storage/interfaces";
 import type { IRoomService } from "../../../room/interfaces";
 import { ROOM_SERVICE_TOKEN } from "../../../room/interfaces";
-import {
-  PermissionClientService,
-  AccessRole,
-  ResourceType,
-} from "../../../permission-client/permission-client.service";
 import { TokenClientService } from "../../../token-client/token-client.service";
 import { UploadData } from "../../interfaces/file-request.interface";
 import type { IUploadService, IFileService } from "../../interfaces";
 import { FILE_SERVICE_TOKEN } from "../../interfaces";
+import { UploadSessionRepository } from "../../repository/upload.session.repository";
+import { UploadConfirmDto } from "../../dto/upload/upload-confirm.dto";
+import { RpcException } from "@nestjs/microservices";
 
 @Injectable()
 export class UploadService implements IUploadService {
@@ -31,7 +24,8 @@ export class UploadService implements IUploadService {
     private readonly storageService: IStorageService,
     @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
     private readonly tokenService: TokenClientService,
-    @Inject(S3_BUCKET_TOKEN) private readonly bucket: string
+    @Inject(S3_BUCKET_TOKEN) private readonly bucket: string,
+    private readonly uploadSessionRepository: UploadSessionRepository
   ) {}
 
   private getMediaPrefix(mimeType: string): string {
@@ -83,113 +77,99 @@ export class UploadService implements IUploadService {
     return { url, key };
   }
 
-  async uploadFileToRoom(params: UploadData) {
-    const { fileSize, mimeType, uploaderIp, originalName, userId, roomId } =
-      params;
-    const resourceId = roomId;
-    const resourceType = ResourceType.ROOM;
-
-    if (!fileSize || !resourceId || !resourceType || !userId) {
-      throw new BadRequestException({
-        error: "Missing file details or user ID",
-      });
+  async initUploads(params: UploadData) {
+    if (!params || !params.files.length) {
+      throw new BadRequestException("No files provided for upload");
     }
 
-    // Permission check is performed in main-app before calling this service
+    const results = await Promise.all(
+      params.files.map(async ({ originalName, mimeType, fileSize }) => {
+        if (!fileSize || !originalName || !params.userId) {
+          throw new BadRequestException(
+            "Invalid upload data for one of the files"
+          );
+        }
 
-    const room = await this.roomService.getRoomById(resourceId);
-    const fileExpiresAt = room?.expiresAt
-      ? new Date(Date.now() + 24 * 60 * 60 * 1000)
-      : null;
+        const { url, key } = await this.getPresignedUrl(originalName, mimeType);
 
-    const { url, key } = await this.getPresignedUrl(originalName, mimeType);
+        const uploadMeta = await this.uploadSessionRepository.create({
+          key,
+          originalName,
+          mimeType,
+          size: fileSize,
+          creatorId: params.userId,
+          roomId: params.roomId,
+          storageId: params.storageId,
+        });
 
-    const fileUploadMeta = await this.fileService.createFileMeta({
-      originalName: originalName,
-      key: key,
-      size: fileSize,
-      mimeType: mimeType,
-      uploaderIp,
-      expiresAt: fileExpiresAt,
-      creatorId: userId,
-    });
-
-    await this.roomService.bindFileToRoom(
-      resourceId,
-      fileUploadMeta._id.toString()
+        return {
+          uploadId: uploadMeta._id.toString(),
+          uploadUrl: url,
+        };
+      })
     );
 
-    await this.fileService.invalidateRoomCache(resourceId);
-
-    return { url };
+    return results;
   }
 
-  async uploadFileToStorage(params: UploadData) {
-    const { fileSize, mimeType, uploaderIp, originalName, userId, storageId } =
-      params;
-    const resourceId = storageId;
-    const resourceType = ResourceType.STORAGE;
+  async confirmUpload(params: UploadConfirmDto) {
+    try {
+      const { uploadId, userId } = params;
 
-    if (!fileSize || !resourceId || !resourceType || !userId) {
-      throw new BadRequestException({
-        error: "Missing file details or user ID",
-      });
-    }
+      const uploadSession =
+        await this.uploadSessionRepository.findById(uploadId);
 
-    // Permission check is performed in main-app before calling this service
+      if (!uploadSession) {
+        throw new BadRequestException("Upload session not found");
+      }
 
-    const { url, key } = await this.getPresignedUrl(originalName, mimeType);
-
-    const fileUploadMeta = await this.fileService.createFileMeta({
-      originalName,
-      key,
-      size: fileSize,
-      mimeType,
-      uploaderIp,
-      expiresAt: null,
-      creatorId: userId,
-    });
-
-    await this.storageService.createItemInStorage({
-      storageId: resourceId,
-      userId,
-      name: originalName,
-      isDirectory: false,
-      parentId: null,
-      fileId: fileUploadMeta._id.toString(),
-    });
-
-    return { url };
-  }
-
-  async uploadFileByToken(params: UploadData) {
-    const { uploadToken } = params;
-
-    if (!uploadToken) {
-      throw new BadRequestException("Upload token is required.");
-    }
-
-    const payload = await this.tokenService.validateToken(uploadToken);
-
-    if (!payload || !payload.resourceId || !payload.resourceType) {
-      throw new UnauthorizedException("Invalid or expired upload token.");
-    }
-
-    const targetParams: UploadData = {
-      ...params,
-      roomId: payload.resourceType === "room" ? payload.resourceId : undefined,
-      storageId:
-        payload.resourceType === "storage" ? payload.resourceId : undefined,
-    };
-
-    if (targetParams.roomId) {
-      return this.uploadFileToRoom(targetParams);
-    } else if (targetParams.storageId) {
-      return this.uploadFileToStorage(targetParams);
-    } else {
-      throw new BadRequestException(
-        "Token target is not supported for single upload."
+      const exists = await this.s3Service.objectExists(
+        this.bucket,
+        uploadSession.key
       );
+
+      if (!exists) {
+        throw new RpcException({
+          code: "FILE_NOT_UPLOADED",
+          message: "File was not uploaded to S3",
+        });
+      }
+
+      const fileMeta = await this.fileService.createFileMeta({
+        originalName: uploadSession.originalName,
+        key: uploadSession.key,
+        size: uploadSession.size,
+        mimeType: uploadSession.mimeType,
+        creatorId: userId,
+        expiresAt: null,
+      });
+
+      if (uploadSession.roomId) {
+        await this.roomService.bindFileToRoom(
+          uploadSession.roomId,
+          fileMeta._id.toString()
+        );
+
+        await this.fileService.invalidateRoomCache(uploadSession.roomId);
+      }
+
+      if (uploadSession.storageId) {
+        await this.storageService.createItemInStorage({
+          storageId: uploadSession.storageId,
+          userId,
+          name: uploadSession.originalName,
+          isDirectory: false,
+          parentId: null,
+          fileId: fileMeta._id.toString(),
+        });
+      }
+
+      await this.uploadSessionRepository.deleteById(uploadId);
+
+      return { success: true, fileId: fileMeta._id.toString() };
+    } catch (err) {
+      console.error("[confirmUpload] ERROR", err);
+      throw err;
     }
   }
 }

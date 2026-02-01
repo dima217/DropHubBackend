@@ -5,12 +5,9 @@ import { S3WriteStream } from "../../utils/s3-write-stream";
 import { File, FileDocument } from "../../schemas/file.schema";
 import { Room, RoomDocument } from "../../../room/schemas/room.schema";
 import { FileUploadStatus } from "../../../../constants/interfaces";
-import { UploadCompleteDto } from "../../dto/upload/upload-complete.dto";
-import { UploadInitMultipartDto } from "../../dto/upload/upload-init-multipart.dto";
-import type {
-  IMultipartUploadService,
-  IFileService,
-} from "../../interfaces";
+import { UploadCompleteDto } from "../../dto/upload/multipart/upload-complete.dto";
+import { UploadInitMultipartDto } from "../../dto/upload/multipart/upload-init-multipart.dto";
+import type { IMultipartUploadService, IFileService } from "../../interfaces";
 import { FILE_SERVICE_TOKEN } from "../../interfaces";
 import { Inject } from "@nestjs/common";
 
@@ -27,7 +24,7 @@ export class MultipartUploadService implements IMultipartUploadService {
     const init = await this.s3Stream.initMultipart(
       params.fileName,
       params.totalParts,
-      params.fileType,
+      params.fileType
     );
     if (!init) {
       throw new BadRequestException({ error: "Init multipart failed" });

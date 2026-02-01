@@ -1,61 +1,112 @@
-import { Body, Controller, Post, UseInterceptors, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UseInterceptors,
+  Req,
+  UseGuards,
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { FileClientService } from '../../file-client/services/file-client.service';
-import { UploadInitMultipartDto } from '../dto/upload/upload-init-multipart.dto';
+import { UploadInitMultipartDto } from '../dto/upload/multipart/upload-init-multipart.dto';
 import { UploadCompleteDto } from '../dto/upload/upload-complete.dto';
 import type { RequestWithUser } from 'src/types/express';
 import { UploadByTokenDto } from '../dto/upload/upload-token.dto';
-import { UploadToRoomDto } from '../dto/upload/upload-room.dto';
-import { UploadToStorageDto } from '../dto/upload/upload-storage.dto';
+import { UploadInitDto } from '../dto/upload/upload-init.dto';
 import { UserIpInterceptor } from 'src/common/interceptors/user.ip.interceptor';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
+import { UploadConfirmDto } from '../dto/upload/upload.confirm.dto';
+import { FileServiceRpcError, FileServiceErrorCode } from '../exceptions/file-rcp.error';
 
 @ApiTags('File Upload')
 @Controller('/upload')
 export class FileUploadController {
   constructor(private readonly fileClient: FileClientService) {}
-
-  @Post('auth/room')
+  @Post('auth/room/init')
   @UseGuards(JwtAuthGuard, PermissionGuard)
   @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'roomId')
   @UseInterceptors(UserIpInterceptor)
   @ApiOperation({
-    summary: 'Upload file to room (authenticated)',
-    description: 'Uploads a file to a room. Requires ADMIN or WRITE permission on the room. Returns S3 presigned URL for direct upload.',
+    summary: 'Init upload to room',
+    description:
+      'Generates S3 presigned URL for uploading a file to a room. Returns uploadId and URL. Requires ADMIN or WRITE permission on the room.',
   })
-  @ApiBody({ type: UploadToRoomDto })
+  @ApiBody({ type: [UploadInitDto] })
   @ApiResponse({
     status: 200,
-    description: 'Upload URL generated successfully',
+    description: 'Upload session initialized successfully',
     schema: {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        uploadId: { type: 'string', example: '605c72...' },
         url: { type: 'string', example: 'https://s3.amazonaws.com/bucket/file?presigned=...' },
       },
     },
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
-  @ApiResponse({ status: 404, description: 'Room not found' })
-  async uploadFileToRoomAuthenticated(
-    @Body() s3UploadData: UploadToRoomDto,
-    @Req() req: RequestWithUser,
-  ) {
+  async initUploadToRoom(@Body() s3UploadData: UploadInitDto, @Req() req: RequestWithUser) {
     const uploadData = {
       ...s3UploadData,
       uploaderIp: req.userIp,
       userId: req.user.id,
     };
 
-    const result = await this.fileClient.uploadFileToRoom(uploadData);
-    return { success: true, url: result.url };
+    const result = await this.fileClient.initUpload(uploadData);
+    return { success: true, result };
   }
 
-  @Post('auth/storage')
+  @Post('auth/room/confirm')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'roomId')
+  @UseInterceptors(UserIpInterceptor)
+  @ApiOperation({
+    summary: 'Confirm upload to room',
+    description:
+      'Confirms that the file was uploaded to S3 and creates Mongo record. Requires ADMIN or WRITE permission.',
+  })
+  @ApiBody({ type: UploadConfirmDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload confirmed and file metadata saved',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        fileId: { type: 'string', example: '605c72...' },
+      },
+    },
+  })
+  async confirmUploadToRoom(@Body() confirmData: UploadConfirmDto, @Req() req: RequestWithUser) {
+    try {
+      return await this.fileClient.confirmUpload({
+        ...confirmData,
+        userId: req.user.id,
+      });
+    } catch (err) {
+      const rpcError = (err as { error?: FileServiceRpcError }).error;
+
+      switch (rpcError?.code) {
+        case FileServiceErrorCode.UploadSessionNotFound:
+          throw new NotFoundException(rpcError.message);
+
+        case FileServiceErrorCode.FileNotUploaded:
+          throw new BadRequestException(rpcError.message);
+
+        default:
+          console.error('Unknown file-service error:', err);
+          throw new InternalServerErrorException();
+      }
+    }
+  }
+
+  @Post('auth/storage/init')
   @UseGuards(JwtAuthGuard, PermissionGuard)
   @RequirePermission(
     ResourceType.STORAGE,
@@ -65,42 +116,74 @@ export class FileUploadController {
   )
   @UseInterceptors(UserIpInterceptor)
   @ApiOperation({
-    summary: 'Upload file to storage (authenticated)',
-    description: 'Uploads a file to user storage. Requires ADMIN or WRITE permission on the storage. Returns S3 presigned URL for direct upload.',
+    summary: 'Init upload to storage',
+    description:
+      'Generates S3 presigned URL for uploading a file to user storage. Returns uploadId and URL. Requires ADMIN or WRITE permission.',
   })
-  @ApiBody({ type: UploadToStorageDto })
+  @ApiBody({ type: UploadInitDto })
   @ApiResponse({
     status: 200,
-    description: 'Upload URL generated successfully',
+    description: 'Upload session initialized successfully',
     schema: {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        uploadId: { type: 'string', example: '605c72...' },
         url: { type: 'string', example: 'https://s3.amazonaws.com/bucket/file?presigned=...' },
       },
     },
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
-  @ApiResponse({ status: 404, description: 'Storage not found' })
-  async uploadFileToStorageAuthenticated(
-    @Body() s3UploadData: UploadToStorageDto,
-    @Req() req: RequestWithUser,
-  ) {
+  async initUploadToStorage(@Body() s3UploadData: UploadInitDto, @Req() req: RequestWithUser) {
     const uploadData = {
       ...s3UploadData,
       uploaderIp: req.userIp,
       userId: req.user.id,
     };
 
-    const result = await this.fileClient.uploadFileToStorage(uploadData);
-    return { success: true, url: result.url };
+    const result = await this.fileClient.initUpload(uploadData);
+    return { success: true, result };
+  }
+
+  @Post('auth/storage/confirm')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  @UseInterceptors(UserIpInterceptor)
+  @ApiOperation({
+    summary: 'Confirm upload to storage',
+    description:
+      'Confirms that the file was uploaded to S3 and creates Mongo record. Requires ADMIN or WRITE permission.',
+  })
+  @ApiBody({ type: UploadConfirmDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload confirmed and file metadata saved',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        fileId: { type: 'string', example: '605c72...' },
+      },
+    },
+  })
+  async confirmUploadToStorage(@Body() confirmData: UploadConfirmDto, @Req() req: RequestWithUser) {
+    const result = await this.fileClient.confirmUpload({
+      ...confirmData,
+      userId: req.user.id,
+    });
+    return result;
   }
 
   @Post('public')
   @UseInterceptors(UserIpInterceptor)
   @ApiOperation({
     summary: 'Upload file by token (public)',
-    description: 'Uploads a file using an upload token. This is a public endpoint that does not require authentication.',
+    description:
+      'Uploads a file using an upload token. This is a public endpoint that does not require authentication.',
   })
   @ApiBody({ type: UploadByTokenDto })
   @ApiResponse({
@@ -131,7 +214,8 @@ export class FileUploadController {
   @UseInterceptors(UserIpInterceptor)
   @ApiOperation({
     summary: 'Initialize multipart upload',
-    description: 'Initializes a multipart upload for large files. Returns presigned URLs for each part. Requires ADMIN or WRITE permission on the room.',
+    description:
+      'Initializes a multipart upload for large files. Returns presigned URLs for each part. Requires ADMIN or WRITE permission on the room.',
   })
   @ApiBody({ type: UploadInitMultipartDto })
   @ApiResponse({
@@ -151,7 +235,10 @@ export class FileUploadController {
                 type: 'object',
                 properties: {
                   partNumber: { type: 'number', example: 1 },
-                  url: { type: 'string', example: 'https://s3.amazonaws.com/bucket/file?presigned=...' },
+                  url: {
+                    type: 'string',
+                    example: 'https://s3.amazonaws.com/bucket/file?presigned=...',
+                  },
                 },
               },
             },

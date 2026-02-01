@@ -9,6 +9,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommandInput,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
 import https from "https";
@@ -50,6 +51,20 @@ export class S3Service implements OnModuleInit {
       return data.Buckets;
     } catch (error) {
       throw new Error(`Failed to list buckets: ${(error as Error).message}`);
+    }
+  }
+
+  async objectExists(bucket: string, key: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new HeadObjectCommand({
+          Bucket: bucket,
+          Key: key,
+        })
+      );
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 

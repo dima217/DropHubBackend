@@ -164,11 +164,6 @@ export class FileService implements IFileService {
         if (fileDoc.expiresAt && fileDoc.expiresAt <= new Date()) {
           throw new NotFoundException({ error: "File has expired" });
         }
-
-        if (fileDoc.uploadSession.status !== FileUploadStatus.COMPLETE) {
-          throw new BadRequestException({ error: "File upload not completed" });
-        }
-
         return fileDoc;
       },
       fileMetaSchema,

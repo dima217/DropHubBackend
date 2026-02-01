@@ -11,8 +11,10 @@ import {
   InitMultipartResult,
   SuccessResponse,
 } from '../types/file';
-import { UploadInitMultipartDto } from '@application/file/dto/upload/upload-init-multipart.dto';
+import { UploadInitMultipartDto } from '@application/file/dto/upload/multipart/upload-init-multipart.dto';
 import { UploadCompleteDto } from '@application/file/dto/upload/upload-complete.dto';
+import { UploadConfirmDto } from '@application/file/dto/upload/upload.confirm.dto';
+import { UploadInitDto } from '@application/file/dto/upload/upload-init.dto';
 
 @Injectable()
 export class FileClientService {
@@ -46,6 +48,20 @@ export class FileClientService {
 
   async deleteFiles(fileIds: string[]): Promise<FileMeta[]> {
     return this.send<FileMeta[], { fileIds: string[] }>('file.delete', { fileIds });
+  }
+
+  async initUpload(data: UploadInitDto): Promise<{ uploadId: string; uploadUrl: string }[]> {
+    return this.send<{ uploadId: string; uploadUrl: string }[], UploadInitDto>(
+      'file.initUpload',
+      data,
+    );
+  }
+
+  async confirmUpload(data: UploadConfirmDto): Promise<{ success: boolean; fileId: string }> {
+    return this.send<{ success: boolean; fileId: string }, UploadConfirmDto>(
+      'file.confirmUpload',
+      data,
+    );
   }
 
   async uploadFileToRoom(data: UploadToRoomPayload): Promise<{ url: string }> {

@@ -1,10 +1,10 @@
-import { UploadInitMultipartDto } from '../dto/upload/upload-init-multipart.dto';
-import { UploadCompleteDto } from '../dto/upload/upload-complete.dto';
+import { UploadInitMultipartDto } from "../dto/upload/multipart/upload-init-multipart.dto";
+import { UploadCompleteDto } from "../dto/upload/multipart/upload-complete.dto";
 
 export interface IMultipartUploadService {
   initUploadMultipart(
     params: UploadInitMultipartDto,
-    ip: string,
+    ip: string
   ): Promise<{
     uploadId: string;
     key: string;
@@ -13,5 +13,3 @@ export interface IMultipartUploadService {
   }>;
   completeMultipart(params: UploadCompleteDto): Promise<void>;
 }
-
-

@@ -1,10 +1,14 @@
-export interface UploadData {
+export interface FilesData {
   originalName: string;
   fileSize: number;
   mimeType: string;
+  uploadToken?: string;
+}
+
+export interface UploadData {
+  userId: number;
+  uploaderIp?: string;
   roomId?: string;
   storageId?: string;
-  uploaderIp?: string;
-  userId?: number;
-  uploadToken?: string;
+  files: FilesData[];
 }

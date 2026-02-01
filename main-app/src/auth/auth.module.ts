@@ -24,7 +24,7 @@ import { CodeModule } from './modules/code/code.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: '15m' },
+        signOptions: { expiresIn: '3h' },
       }),
       inject: [ConfigService],
     }),
