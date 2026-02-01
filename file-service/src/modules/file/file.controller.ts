@@ -70,8 +70,10 @@ export class FileController {
 
   // Download operations
   @MessagePattern("file.getDownloadLink")
-  async getDownloadLink(@Payload() data: { fileId: string; userId: number }) {
-    return this.downloadService.getDownloadLinkAuthenticated(data);
+  async getDownloadLink(
+    @Payload() data: { fileIds: string[]; userId: number }
+  ) {
+    return this.downloadService.getDownloadLinksAuthenticated(data);
   }
 
   @MessagePattern("file.getDownloadLinkByToken")
@@ -104,8 +106,10 @@ export class FileController {
   }
 
   @MessagePattern("file.deleteCompletely")
-  async deleteFileCompletely(@Payload() data: { fileIds: string[] }) {
-    await this.fileService.deleteFilesCompletely(data.fileIds);
+  async deleteFileCompletely(
+    @Payload() data: { fileIds: string[]; roomId?: string }
+  ) {
+    await this.fileService.deleteFilesCompletely(data.fileIds, data.roomId);
     return { success: true };
   }
 

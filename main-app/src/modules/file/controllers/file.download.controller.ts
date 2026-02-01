@@ -96,8 +96,8 @@ export class FileDownloadController {
   @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
   @ApiResponse({ status: 404, description: 'File not found' })
   async downloadFileByURLPrivate(@Body() body: DownloadFileDto, @Req() req: RequestWithUser) {
-    const url = await this.fileClient.getDownloadLink(body.fileId, req.user.id);
-    return { url };
+    const urls = await this.fileClient.getDownloadLinks(body.fileIds, req.user.id);
+    return urls;
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -130,7 +130,7 @@ export class FileDownloadController {
     @Body() body: DownloadRoomFileDto,
     @Req() req: RequestWithUser,
   ) {
-    const url = await this.fileClient.getDownloadLink(body.fileId, req.user.id);
-    return { url };
+    const urls = await this.fileClient.getDownloadLinks(body.fileIds, req.user.id);
+    return urls;
   }
 }

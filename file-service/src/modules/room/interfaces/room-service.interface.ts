@@ -8,7 +8,9 @@ export interface IRoomService {
   getRoomsByIds(roomIds: string[]): Promise<any[]>;
   bindFileToRoom(roomId: string, fileId: string): Promise<void>;
   updateParticipantsCount(roomId: string, count: number): Promise<void>;
-  deleteRoom(params: { userId: number; roomId: string }): Promise<{ message: string }>;
+  deleteRoom(params: {
+    userId: number;
+    roomId: string;
+  }): Promise<{ message: string }>;
+  removeFilesFromRoom(roomId: string, fileIds: string[]): Promise<void>;
 }
-
-

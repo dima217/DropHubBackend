@@ -71,7 +71,6 @@ export class DownloadService implements IDownloadService {
     );
   }
 
-  // Метод для инвалидации кеша при удалении файла
   async invalidateDownloadCache(key: string): Promise<void> {
     await this.cacheService.delete(`download:url:${key}`);
   }
@@ -87,14 +86,25 @@ export class DownloadService implements IDownloadService {
     return file;
   }
 
-  async getDownloadLinkAuthenticated(
-    params: AuthenticatedDownloadParams
-  ): Promise<string> {
-    const { fileId, userId } = params;
+  async getDownloadLinksAuthenticated(params: {
+    fileIds: string[];
+    userId: number;
+  }): Promise<{ fileId: string; url: string }[]> {
+    const { fileIds, userId } = params;
 
-    const file = await this.verifyAndGetFile(fileId, userId);
+    if (!fileIds || !fileIds.length) {
+      throw new BadRequestException("fileIds array is required");
+    }
 
-    return this.generatePresignedUrl(file.key, fileId);
+    const results: { fileId: string; url: string }[] = [];
+
+    for (const fileId of fileIds) {
+      const file = await this.verifyAndGetFile(fileId, userId);
+      const url = await this.generatePresignedUrl(file.key, fileId);
+      results.push({ fileId, url });
+    }
+
+    return results;
   }
 
   async downloadFileByToken(params: DownloadByTokenParams): Promise<string> {

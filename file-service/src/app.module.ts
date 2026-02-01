@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { FileModule } from "./modules/file/file.module";
 import { StorageModule } from "./modules/storage/storage.module";
@@ -23,9 +23,9 @@ import { AvatarModule } from "./modules/avatar/avatar.module";
     PermissionClientModule,
     TokenClientModule,
     S3Module,
-    FileModule,
     StorageModule,
-    RoomModule,
+    forwardRef(() => FileModule),
+    forwardRef(() => RoomModule),
     AvatarModule,
   ],
 })

@@ -46,8 +46,14 @@ export class FileClientService {
     });
   }
 
-  async deleteFiles(fileIds: string[]): Promise<FileMeta[]> {
-    return this.send<FileMeta[], { fileIds: string[] }>('file.delete', { fileIds });
+  async deleteFiles(fileIds: string[], roomId: string): Promise<{ success: boolean }> {
+    return this.send<{ success: boolean }, { fileIds: string[]; roomId: string }>(
+      'file.deleteCompletely',
+      {
+        fileIds,
+        roomId,
+      },
+    );
   }
 
   async initUpload(data: UploadInitDto): Promise<{ uploadId: string; uploadUrl: string }[]> {
@@ -76,11 +82,17 @@ export class FileClientService {
     return this.send<{ url: string }, UploadByTokenPayload>('file.uploadByToken', data);
   }
 
-  async getDownloadLink(fileId: string, userId: number): Promise<string> {
-    return this.send<string, { fileId: string; userId: number }>('file.getDownloadLink', {
-      fileId,
-      userId,
-    });
+  async getDownloadLinks(
+    fileIds: string[],
+    userId: number,
+  ): Promise<{ fileId: string; url: string }[]> {
+    return this.send<{ fileId: string; url: string }[], { fileIds: string[]; userId: number }>(
+      'file.getDownloadLink',
+      {
+        fileIds,
+        userId,
+      },
+    );
   }
 
   async getDownloadLinkByToken(downloadToken: string): Promise<string> {

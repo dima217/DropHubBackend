@@ -27,6 +27,8 @@ import {
   IFileService,
   AuthenticatedGettingFilesByRoomParams,
 } from "./interfaces/file-service.interface";
+import { ROOM_SERVICE_TOKEN } from "../room/interfaces";
+import type { IRoomService } from "../room/interfaces";
 
 const fileMetaSchema = z.object({
   _id: z.any(),
@@ -64,6 +66,8 @@ export class FileService implements IFileService {
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     private readonly s3Service: S3Service,
     private readonly cacheService: CacheService,
+    @Inject(forwardRef(() => ROOM_SERVICE_TOKEN))
+    private readonly roomService: IRoomService,
     @Inject(forwardRef(() => STORAGE_SERVICE_TOKEN))
     private readonly storageService: IStorageService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string
@@ -200,7 +204,10 @@ export class FileService implements IFileService {
       .exec();
   }
 
-  async deleteFilesCompletely(fileIds: string[]): Promise<void> {
+  async deleteFilesCompletely(
+    fileIds: string[],
+    roomId?: string
+  ): Promise<void> {
     if (!fileIds.length) return;
 
     const files = await this.fileModel
@@ -211,6 +218,14 @@ export class FileService implements IFileService {
     if (!files.length) {
       console.warn("No files found for deletion");
       return;
+    }
+
+    if (roomId) {
+      try {
+        await this.roomService.removeFilesFromRoom(roomId, fileIds);
+      } catch (err) {
+        console.error(`Failed to remove files from room ${roomId}`, err);
+      }
     }
 
     for (const file of files) {

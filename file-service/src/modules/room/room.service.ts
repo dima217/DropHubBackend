@@ -4,6 +4,8 @@ import {
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
+  forwardRef,
+  Inject,
 } from "@nestjs/common";
 import { Model } from "mongoose";
 import { InjectModel } from "@nestjs/mongoose";
@@ -14,7 +16,7 @@ import {
   ResourceType,
 } from "../permission-client/permission-client.service";
 import { IRoomService } from "./interfaces/room-service.interface";
-import { FileService } from "../file/file.service";
+import { FILE_SERVICE_TOKEN, type IFileService } from "../file/interfaces";
 
 interface AuthenticationDeleteRoomParams {
   userId: number;
@@ -32,7 +34,8 @@ export class RoomService implements IRoomService {
   constructor(
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     private readonly permissionClient: PermissionClientService,
-    private readonly fileService: FileService
+    @Inject(forwardRef(() => FILE_SERVICE_TOKEN))
+    private readonly fileService: IFileService
   ) {}
 
   async getRoomsByUserID(userId: number) {
@@ -170,5 +173,24 @@ export class RoomService implements IRoomService {
         cause: err,
       });
     }
+  }
+  async removeFilesFromRoom(roomId: string, fileIds: string[]): Promise<void> {
+    if (!roomId || !fileIds.length) return;
+
+    const room = await this.roomModel.findById(roomId);
+    if (!room) {
+      throw new NotFoundException(`Room with ID ${roomId} not found`);
+    }
+
+    const filesToRemove = room.files?.filter((f) =>
+      fileIds.includes(f.toString())
+    );
+
+    if (!filesToRemove?.length) return;
+
+    room.files = room.files.filter((f) => !filesToRemove.includes(f));
+
+    await room.save();
+    await this.fileService.invalidateRoomCache(roomId);
   }
 }

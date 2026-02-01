@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Post, Req, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -28,7 +28,14 @@ import { ResourceType, AccessRole } from 'src/modules/permission/entities/permis
 export class FileController {
   constructor(private readonly fileClient: FileClientService) {}
 
-  @Post()
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.ROOM,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'roomId',
+  )
+  @Delete()
   @ApiOperation({
     summary: 'Delete files',
     description:
@@ -48,9 +55,9 @@ export class FileController {
     status: 404,
     description: 'One or more files not found',
   })
-  async deleteFile(@Body() dto: DeleteFileDto) {
-    const results = await this.fileClient.deleteFiles(dto.fileIds);
-    return { success: true, updated: results.length };
+  async deleteFiles(@Body() dto: DeleteFileDto) {
+    const success = await this.fileClient.deleteFiles(dto.fileIds, dto.roomId);
+    return success;
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)

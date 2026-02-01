@@ -11,4 +11,7 @@ export class DeleteFileDto {
   @ArrayNotEmpty()
   @IsString({ each: true })
   fileIds: string[];
+
+  @IsString()
+  roomId: string;
 }
