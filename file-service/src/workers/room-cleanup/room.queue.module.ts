@@ -3,9 +3,9 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { BullConfigModule } from "../../config/modules/bull-config.module";
 import { BullModule } from "@nestjs/bullmq";
 import { FileCleanUpProcessor } from "./processors/room.queue.processor";
-import { FileModule } from "../../modules/file/file.module";
-import { RoomCleanupService } from "./services/file-cleanup.service";
+import { RoomCleanupService } from "./services/room-cleanup.service";
 import { RoomQueueService } from "./services/room.queue.service";
+import { RoomModule } from "@/modules/room/room.module";
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { RoomQueueService } from "./services/room.queue.service";
       name: "file-cleanup",
     }),
     ScheduleModule.forRoot(),
-    FileModule,
+    RoomModule,
   ],
   providers: [RoomQueueService, RoomCleanupService, FileCleanUpProcessor],
 })

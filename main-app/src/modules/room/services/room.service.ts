@@ -6,6 +6,7 @@ import { RoomDto } from '../../file-client/types/room';
 import { UsersService } from '../../user/services/user.service';
 import { RoomDetailsDto } from '../dto/room.details.dto';
 import { RoomsGateway } from '../gateway/room.gateway';
+import { ParticipantDto, ParticipantProfileDto } from '../dto/participant.dto';
 
 @Injectable()
 export class RoomService {
@@ -31,7 +32,9 @@ export class RoomService {
     return result;
   }
 
-  async getRoomsByUserId(userId: number): Promise<Array<RoomDto & { userRole?: AccessRole }>> {
+  async getRoomsByUserId(
+    userId: number,
+  ): Promise<Array<RoomDto & { userRole?: AccessRole; participantsDetails: ParticipantDto[] }>> {
     const permissions = await this.permissionService.getPermissionsByUserIdAndType(
       userId,
       ResourceType.ROOM,
@@ -43,15 +46,34 @@ export class RoomService {
 
     const roomIds = permissions.map((p) => p.resourceId);
 
-    const rooms: RoomDto[] = await this.roomClient.getRoomsByIds(roomIds);
+    const rooms = await this.roomClient.getRoomsByIds(roomIds);
 
-    return rooms.map((room) => {
-      const permission = permissions.find((p) => p.resourceId === room.id);
-      return {
-        ...room,
-        userRole: permission?.role,
-      };
-    });
+    const roomsWithParticipants = await Promise.all(
+      rooms.map(async (room) => {
+        const participants = (await this.permissionService.getResourceParticipants(
+          room.id,
+          ResourceType.ROOM,
+          this.userService,
+        )) as
+          | Array<{
+              userId: number;
+              role: AccessRole;
+              email: string;
+              profile: ParticipantProfileDto;
+            }>
+          | [];
+
+        const permission = permissions.find((p) => p.resourceId === room.id);
+
+        return {
+          ...room,
+          userRole: permission?.role,
+          participantsDetails: participants,
+        };
+      }),
+    );
+
+    return roomsWithParticipants;
   }
 
   async addUsersToRoom(

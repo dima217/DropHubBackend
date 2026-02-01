@@ -1,7 +1,7 @@
 import { AccessRole } from '@application/permission/entities/permission.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
-class ParticipantProfileDto {
+export class ParticipantProfileDto {
   @ApiProperty({ example: 'John' })
   firstName: string;
 

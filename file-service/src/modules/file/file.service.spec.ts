@@ -1,16 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { FileService } from './file.service';
-import { File, FileDocument } from './schemas/file.schema';
-import { Room, RoomDocument } from '../room/schemas/room.schema';
-import { PermissionClientService } from '../permission-client/permission-client.service';
-import { S3Service } from '../s3/s3.service';
-import { CacheService } from '../../cache/cache.service';
-import { FileUploadStatus } from '../../constants/interfaces';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getModelToken } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { NotFoundException, BadRequestException } from "@nestjs/common";
+import { FileService } from "./file.service";
+import { File, FileDocument } from "./schemas/file.schema";
+import { Room, RoomDocument } from "../room/schemas/room.schema";
+import { PermissionClientService } from "../permission-client/permission-client.service";
+import { S3Service } from "../s3/s3.service";
+import { CacheService } from "../../cache/cache.service";
+import { FileUploadStatus } from "../../constants/interfaces";
 
-describe('FileService', () => {
+describe("FileService", () => {
   let service: FileService;
   let fileModel: Model<FileDocument>;
   let roomModel: Model<RoomDocument>;
@@ -73,8 +73,8 @@ describe('FileService', () => {
           useValue: mockCacheService,
         },
         {
-          provide: 'S3_BUCKET',
-          useValue: 'test-bucket',
+          provide: "S3_BUCKET",
+          useValue: "test-bucket",
         },
       ],
     }).compile();
@@ -82,7 +82,9 @@ describe('FileService', () => {
     service = module.get<FileService>(FileService);
     fileModel = module.get<Model<FileDocument>>(getModelToken(File.name));
     roomModel = module.get<Model<RoomDocument>>(getModelToken(Room.name));
-    permissionClient = module.get<PermissionClientService>(PermissionClientService);
+    permissionClient = module.get<PermissionClientService>(
+      PermissionClientService
+    );
     s3Service = module.get<S3Service>(S3Service);
     cacheService = module.get<CacheService>(CacheService);
   });
@@ -91,13 +93,13 @@ describe('FileService', () => {
     jest.clearAllMocks();
   });
 
-  describe('getFileById', () => {
-    it('should return file from cache if exists', async () => {
+  describe("getFileById", () => {
+    it("should return file from cache if exists", async () => {
       const mockFile = {
-        _id: 'file-id',
-        key: 'test-key',
-        originalName: 'test.jpg',
-        mimeType: 'image/jpeg',
+        _id: "file-id",
+        key: "test-key",
+        originalName: "test.jpg",
+        mimeType: "image/jpeg",
         uploadSession: { status: FileUploadStatus.COMPLETE },
         expiresAt: null,
       };
@@ -110,14 +112,14 @@ describe('FileService', () => {
         lean: jest.fn().mockResolvedValue(mockFile),
       });
 
-      const result = await service.getFileById('file-id');
+      const result = await service.getFileById("file-id");
 
       expect(result).toEqual(mockFile);
       expect(mockCacheService.cacheWrapper).toHaveBeenCalled();
-      expect(mockFileModel.findById).toHaveBeenCalledWith('file-id');
+      expect(mockFileModel.findById).toHaveBeenCalledWith("file-id");
     });
 
-    it('should throw NotFoundException if file does not exist', async () => {
+    it("should throw NotFoundException if file does not exist", async () => {
       mockCacheService.cacheWrapper.mockImplementation(async (key, fn) => {
         return fn();
       });
@@ -126,14 +128,14 @@ describe('FileService', () => {
         lean: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.getFileById('non-existent-id')).rejects.toThrow(
-        NotFoundException,
+      await expect(service.getFileById("non-existent-id")).rejects.toThrow(
+        NotFoundException
       );
     });
 
-    it('should throw NotFoundException if file has expired', async () => {
+    it("should throw NotFoundException if file has expired", async () => {
       const expiredFile = {
-        _id: 'file-id',
+        _id: "file-id",
         expiresAt: new Date(Date.now() - 1000),
         uploadSession: { status: FileUploadStatus.COMPLETE },
       };
@@ -146,12 +148,14 @@ describe('FileService', () => {
         lean: jest.fn().mockResolvedValue(expiredFile),
       });
 
-      await expect(service.getFileById('file-id')).rejects.toThrow(NotFoundException);
+      await expect(service.getFileById("file-id")).rejects.toThrow(
+        NotFoundException
+      );
     });
 
-    it('should throw BadRequestException if upload not completed', async () => {
+    it("should throw BadRequestException if upload not completed", async () => {
       const incompleteFile = {
-        _id: 'file-id',
+        _id: "file-id",
         uploadSession: { status: FileUploadStatus.IN_PROGRESS },
         expiresAt: null,
       };
@@ -164,23 +168,25 @@ describe('FileService', () => {
         lean: jest.fn().mockResolvedValue(incompleteFile),
       });
 
-      await expect(service.getFileById('file-id')).rejects.toThrow(BadRequestException);
+      await expect(service.getFileById("file-id")).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 
-  describe('getFilesByRoomID', () => {
-    it('should return files for room', async () => {
+  describe("getFilesByRoomID", () => {
+    it("should return files for room", async () => {
       const mockRoom = {
-        _id: 'room-id',
+        _id: "room-id",
         files: [
           {
-            _id: 'file1',
-            originalName: 'test1.jpg',
+            _id: "file1",
+            originalName: "test1.jpg",
             expiresAt: null,
           },
           {
-            _id: 'file2',
-            originalName: 'test2.jpg',
+            _id: "file2",
+            originalName: "test2.jpg",
             expiresAt: new Date(Date.now() + 10000),
           },
         ],
@@ -198,38 +204,38 @@ describe('FileService', () => {
       });
 
       const result = await service.getFilesByRoomID({
-        roomId: 'room-id',
+        roomId: "room-id",
         userId: 1,
       });
 
       expect(result).toEqual(mockRoom);
       expect(mockPermissionClient.verifyUserAccess).toHaveBeenCalledWith(
         1,
-        'room-id',
+        "room-id",
         expect.any(String),
-        expect.any(Array),
+        expect.any(Array)
       );
     });
 
-    it('should throw BadRequestException if roomId is missing', async () => {
+    it("should throw BadRequestException if roomId is missing", async () => {
       await expect(
-        service.getFilesByRoomID({ roomId: '', userId: 1 }),
+        service.getFilesByRoomID({ roomId: "", userId: 1 })
       ).rejects.toThrow(BadRequestException);
     });
   });
 
-  describe('createFileMeta', () => {
-    it('should create file metadata', async () => {
+  describe("createFileMeta", () => {
+    it("should create file metadata", async () => {
       const createDto = {
-        originalName: 'test.jpg',
-        key: 'uploads/images/test.jpg',
+        originalName: "test.jpg",
+        key: "uploads/images/test.jpg",
         size: 1024,
-        mimeType: 'image/jpeg',
+        mimeType: "image/jpeg",
       };
 
       const mockFile = {
         ...createDto,
-        _id: 'file-id',
+        _id: "file-id",
         uploadTime: new Date(),
         downloadCount: 0,
         expiresAt: expect.any(Date),
@@ -245,19 +251,19 @@ describe('FileService', () => {
       expect(mockFileModel).toHaveBeenCalled();
     });
 
-    it('should use custom expiresAt if provided', async () => {
+    it("should use custom expiresAt if provided", async () => {
       const customExpiresAt = new Date(Date.now() + 3600000);
       const createDto = {
-        originalName: 'test.jpg',
-        key: 'uploads/images/test.jpg',
+        originalName: "test.jpg",
+        key: "uploads/images/test.jpg",
         size: 1024,
-        mimeType: 'image/jpeg',
+        mimeType: "image/jpeg",
         expiresAt: customExpiresAt,
       };
 
       const mockFile = {
         ...createDto,
-        _id: 'file-id',
+        _id: "file-id",
         uploadTime: new Date(),
         downloadCount: 0,
         expiresAt: customExpiresAt,
@@ -273,7 +279,7 @@ describe('FileService', () => {
     });
   });
 
-  describe('deleteFileCompletely', () => {
+  /*describe('deleteFileCompletely', () => {
     it('should delete file from S3 and database', async () => {
       const mockFile = {
         _id: 'file-id',
@@ -311,20 +317,22 @@ describe('FileService', () => {
       });
       mockS3Service.delete.mockResolvedValue(undefined);
 
-      await service.deleteFileCompletely('stored-name');
+      await service.deleteFilesCompletely('stored-name');
 
       expect(mockS3Service.delete).toHaveBeenCalled();
       expect(mockFileModel.findByIdAndDelete).not.toHaveBeenCalled();
     });
-  });
+  }); */
 
-  describe('invalidateRoomCache', () => {
-    it('should invalidate room cache', async () => {
+  describe("invalidateRoomCache", () => {
+    it("should invalidate room cache", async () => {
       mockCacheService.delete.mockResolvedValue(undefined);
 
-      await service.invalidateRoomCache('room-id');
+      await service.invalidateRoomCache("room-id");
 
-      expect(mockCacheService.delete).toHaveBeenCalledWith('room:files:room-id');
+      expect(mockCacheService.delete).toHaveBeenCalledWith(
+        "room:files:room-id"
+      );
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import {
   S3Client,
   ListBucketsCommand,
@@ -9,21 +9,21 @@ import {
   GetObjectCommand,
   DeleteObjectCommandInput,
   DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
-import { NodeHttpHandler } from '@smithy/node-http-handler';
-import https from 'https';
-import http from 'http';
+} from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+import https from "https";
+import http from "http";
 
 @Injectable()
 export class S3Service implements OnModuleInit {
   public client: S3Client;
 
   onModuleInit() {
-    const endpoint = process.env.S3_ENDPOINT || '';
-    const isHttps = endpoint.startsWith('https://');
-    
+    const endpoint = process.env.S3_ENDPOINT || "";
+    const isHttps = endpoint.startsWith("https://");
+
     const requestHandlerConfig: any = {
-      requestTimeout: 5000,
+      requestTimeout: 15000,
     };
 
     if (isHttps) {
@@ -33,12 +33,12 @@ export class S3Service implements OnModuleInit {
     }
 
     this.client = new S3Client({
-      region: process.env.S3_REGION || 'us-east-1',
+      region: process.env.S3_REGION || "us-east-1",
       endpoint: endpoint,
-      forcePathStyle: true, 
+      forcePathStyle: true,
       credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY ?? '',
-        secretAccessKey: process.env.S3_SECRET_KEY ?? '',
+        accessKeyId: process.env.S3_ACCESS_KEY ?? "",
+        secretAccessKey: process.env.S3_SECRET_KEY ?? "",
       },
       requestHandler: new NodeHttpHandler(requestHandlerConfig),
     });
@@ -77,4 +77,3 @@ export class S3Service implements OnModuleInit {
     return new DeleteObjectCommand(params);
   }
 }
-
