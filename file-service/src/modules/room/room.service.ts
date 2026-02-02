@@ -117,6 +117,33 @@ export class RoomService implements IRoomService {
     return rooms.map((room) => this.mapRoomToDto(room));
   }
 
+  async getRoomDetailsById(roomId: string) {
+    if (!roomId) {
+      throw new BadRequestException("Room ID is required");
+    }
+
+    const room = await this.roomModel
+      .findById(roomId)
+      .populate("files")
+      .lean()
+      .exec();
+
+    if (!room) {
+      throw new NotFoundException("Room not found");
+    }
+
+    return {
+      id: room._id.toString(),
+      files: room.files,
+      groups: room.groups?.map((g: any) => g.toString()) || [],
+      createdAt: room.createdAt?.toISOString(),
+      participants: room.participants || [],
+      owner: room.owner,
+      expiresAt: room.expiresAt?.toISOString() || null,
+      maxBytes: room.maxBytes || 0,
+    };
+  }
+
   private mapRoomToDto(room: any) {
     return {
       id: room._id.toString(),

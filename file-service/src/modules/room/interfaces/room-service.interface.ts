@@ -13,4 +13,5 @@ export interface IRoomService {
     roomId: string;
   }): Promise<{ message: string }>;
   removeFilesFromRoom(roomId: string, fileIds: string[]): Promise<void>;
+  getRoomDetailsById(roomId: string): Promise<any | null>;
 }

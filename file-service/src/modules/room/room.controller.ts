@@ -36,6 +36,11 @@ export class RoomController {
     return this.roomService.getRoomById(data.roomId);
   }
 
+  @MessagePattern("room.getDetailsById")
+  async getRoomsDetailsById(@Payload() data: { roomId: string }) {
+    return this.roomService.getRoomDetailsById(data.roomId);
+  }
+
   @MessagePattern("room.getByIds")
   async getRoomsByIds(@Payload() data: { roomIds: string[] }) {
     return this.roomService.getRoomsByIds(data.roomIds);

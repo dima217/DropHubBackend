@@ -1,7 +1,7 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { FileUploadStatus } from '../../../constants/interfaces';
-import { v4 as uuidv4 } from 'uuid';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { FileUploadStatus } from "../../../constants/interfaces";
+import { v4 as uuidv4 } from "uuid";
 
 export type FileDocument = File & Document;
 
@@ -57,4 +57,3 @@ export class File {
 }
 
 export const FileSchema = SchemaFactory.createForClass(File);
-

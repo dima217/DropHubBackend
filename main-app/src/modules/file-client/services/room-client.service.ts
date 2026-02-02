@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { CreateRoomPayload, CreateRoomResult, DeleteRoomResult, RoomDto } from '../types/room';
+import { RoomDetailsDto } from '@application/room/dto/room.details.dto';
 
 @Injectable()
 export class RoomClientService {
@@ -32,6 +33,10 @@ export class RoomClientService {
 
   async getRoomById(roomId: string): Promise<RoomDto | null> {
     return this.send<RoomDto | null, { roomId: string }>('room.getById', { roomId });
+  }
+
+  async getRoomDetailsById(roomId: string): Promise<RoomDetailsDto | null> {
+    return this.send<RoomDetailsDto | null, { roomId: string }>('room.getDetailsById', { roomId });
   }
 
   async getRoomsByIds(roomIds: string[]): Promise<RoomDto[]> {

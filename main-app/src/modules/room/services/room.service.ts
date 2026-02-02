@@ -72,7 +72,6 @@ export class RoomService {
         };
       }),
     );
-
     return roomsWithParticipants;
   }
 
@@ -233,6 +232,7 @@ export class RoomService {
     for (const userId of targetUserIds) {
       this.roomsGateway.sendRemovedFromRoom(userId, room.id);
     }
+    this.roomsGateway.sendRoomUpdate(room.id, 'refetch');
 
     return {
       success: results.failed.length === 0,
@@ -252,7 +252,7 @@ export class RoomService {
       AccessRole.WRITE,
     ]);
 
-    const room: RoomDto | null = await this.roomClient.getRoomById(roomId);
+    const room: RoomDetailsDto | null = await this.roomClient.getRoomDetailsById(roomId);
     if (!room) {
       throw new NotFoundException('Room not found');
     }

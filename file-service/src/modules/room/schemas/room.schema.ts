@@ -1,12 +1,13 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { FileUploadStatus } from "../../../constants/interfaces";
+import { File } from "@/modules/file/schemas/file.schema";
 
 export type RoomDocument = Room & Document;
 
 @Schema({ timestamps: true })
 export class Room {
-  @Prop({ type: [{ type: Types.ObjectId, ref: "SharedFile" }], default: [] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: File.name }], default: [] })
   files: Types.ObjectId[];
 
   @Prop({ type: [{ type: Types.ObjectId, ref: "UploadSession" }], default: [] })
