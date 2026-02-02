@@ -40,7 +40,6 @@ export class RoomDetailsDto {
   @ApiPropertyOptional({ example: 'ADMIN' })
   userRole?: string;
 
-  // 🔥 расширение для details-endpoint
   @ApiProperty({
     type: [ParticipantDto],
     description: 'Detailed participants info',

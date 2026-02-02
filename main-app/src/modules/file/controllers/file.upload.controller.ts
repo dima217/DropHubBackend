@@ -24,11 +24,15 @@ import { RequirePermission } from 'src/auth/common/decorators/permission.decorat
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { UploadConfirmDto } from '../dto/upload/upload.confirm.dto';
 import { FileServiceRpcError, FileServiceErrorCode } from '../exceptions/file-rcp.error';
+import { RoomsGateway } from '@application/room/gateway/room.gateway';
 
 @ApiTags('File Upload')
 @Controller('/upload')
 export class FileUploadController {
-  constructor(private readonly fileClient: FileClientService) {}
+  constructor(
+    private readonly fileClient: FileClientService,
+    private readonly roomGateway: RoomsGateway,
+  ) {}
   @Post('auth/room/init')
   @UseGuards(JwtAuthGuard, PermissionGuard)
   @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN, AccessRole.WRITE], 'body', 'roomId')
@@ -85,10 +89,14 @@ export class FileUploadController {
   })
   async confirmUploadToRoom(@Body() confirmData: UploadConfirmDto, @Req() req: RequestWithUser) {
     try {
-      return await this.fileClient.confirmUpload({
+      const confirmResult = await this.fileClient.confirmUpload({
         ...confirmData,
         userId: req.user.id,
       });
+      if (confirmData.roomId) {
+        this.roomGateway.sendRoomUpdate(confirmData.roomId);
+      }
+      return confirmResult;
     } catch (err) {
       const rpcError = (err as { error?: FileServiceRpcError }).error;
 

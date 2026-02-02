@@ -5,6 +5,7 @@ import {
   OnGatewayDisconnect,
   SubscribeMessage,
   MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
@@ -54,11 +55,16 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('subscribeToRoomUpdates')
   @UseGuards(WsJwtAuthGuard)
-  handleSubscribeToRoom(client: USocket, @MessageBody() roomId: string) {
+  handleSubscribeToRoom(@ConnectedSocket() client: USocket, @MessageBody() roomId: string) {
     client.join(`room:${roomId}`);
     this.logger.debug(`User ${client.user.id} joined room ${roomId}`);
   }
-  sendRoomUpdate(roomId: string, payload: any) {
-    this.server.to(`room:${roomId}`).emit('room:update', payload);
+  sendRoomUpdate(roomId: string) {
+    this.server.to(`room:${roomId}`).emit('room:update', { updatedRoomId: roomId, type: 'files' });
+  }
+
+  @SubscribeMessage('unsubscribeFromUpdates')
+  handleUnsubscribe(@ConnectedSocket() client: USocket, @MessageBody() roomId: string) {
+    client.leave(`room:${roomId}`);
   }
 }

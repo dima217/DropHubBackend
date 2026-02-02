@@ -6,9 +6,10 @@ import { FilePreviewController } from './controllers/file.preview.controller';
 import { FileClientModule } from '../file-client/file-client.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { PermissionModule } from '@application/permission/permission.module';
+import { RoomModule } from '@application/room/room.module';
 
 @Module({
-  imports: [FileClientModule, AuthModule, PermissionModule],
+  imports: [FileClientModule, AuthModule, PermissionModule, RoomModule],
   controllers: [
     FileController,
     FileUploadController,
