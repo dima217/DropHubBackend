@@ -15,4 +15,7 @@ export class UploadFileBaseDto {
   @ApiProperty({ description: 'File MIME type', example: 'application/pdf' })
   @IsString()
   mimeType: string;
+
+  @IsString()
+  storedName?: string;
 }

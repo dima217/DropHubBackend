@@ -1,5 +1,12 @@
-import { IsString, IsNumber, IsOptional, IsObject, IsArray, IsEnum } from 'class-validator';
-import { FileUploadStatus } from '../../../constants/interfaces';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsObject,
+  IsArray,
+  IsEnum,
+} from "class-validator";
+import { FileUploadStatus } from "../../../constants/interfaces";
 
 export class UploadSessionDto {
   @IsString()
@@ -24,6 +31,9 @@ export class CreateFileMetaDto {
 
   @IsString()
   mimeType: string;
+
+  @IsString()
+  storedName?: string;
 
   @IsString()
   uploaderIp?: string;

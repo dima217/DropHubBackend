@@ -8,20 +8,12 @@ export class Comment {
   id: string;
 
   @Column()
-  resourceId: string;
+  roomId: string;
 
   @Column({
     type: 'enum',
     enum: ResourceType,
   })
-  resourceType: ResourceType;
-
-  @Column({ nullable: true })
-  itemId?: string; // Для элементов стора
-
-  @Column({ nullable: true })
-  fileId?: string; // Для файлов в комнатах
-
   @Column({ type: 'text' })
   content: string;
 
@@ -38,4 +30,3 @@ export class Comment {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
 }
-

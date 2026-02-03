@@ -6,4 +6,3 @@ export class UpdateCommentDto {
   @IsString()
   content: string;
 }
-

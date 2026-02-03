@@ -5,12 +5,13 @@ import { CommentsController } from './controllers/comments.controller';
 import { Comment } from './entities/comment.entity';
 import { PermissionModule } from '../permission/permission.module';
 import { UserModule } from '../user/user.module';
+import { CommentsGateway } from './gateway/comments.gateway';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Comment]), PermissionModule, UserModule],
+  imports: [TypeOrmModule.forFeature([Comment]), PermissionModule, UserModule, AuthModule],
   controllers: [CommentsController],
-  providers: [CommentsService],
+  providers: [CommentsService, CommentsGateway],
   exports: [CommentsService],
 })
 export class CommentsModule {}
-

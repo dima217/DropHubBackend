@@ -83,30 +83,36 @@ export class UploadService implements IUploadService {
     }
 
     const results = await Promise.all(
-      params.files.map(async ({ originalName, mimeType, fileSize }) => {
-        if (!fileSize || !originalName || !params.userId) {
-          throw new BadRequestException(
-            "Invalid upload data for one of the files"
+      params.files.map(
+        async ({ originalName, mimeType, fileSize, storeName }) => {
+          if (!fileSize || !originalName || !params.userId) {
+            throw new BadRequestException(
+              "Invalid upload data for one of the files"
+            );
+          }
+
+          const { url, key } = await this.getPresignedUrl(
+            originalName,
+            mimeType
           );
+
+          const uploadMeta = await this.uploadSessionRepository.create({
+            key,
+            originalName,
+            mimeType,
+            size: fileSize,
+            storedName: storeName,
+            creatorId: params.userId,
+            roomId: params.roomId,
+            storageId: params.storageId,
+          });
+
+          return {
+            uploadId: uploadMeta._id.toString(),
+            uploadUrl: url,
+          };
         }
-
-        const { url, key } = await this.getPresignedUrl(originalName, mimeType);
-
-        const uploadMeta = await this.uploadSessionRepository.create({
-          key,
-          originalName,
-          mimeType,
-          size: fileSize,
-          creatorId: params.userId,
-          roomId: params.roomId,
-          storageId: params.storageId,
-        });
-
-        return {
-          uploadId: uploadMeta._id.toString(),
-          uploadUrl: url,
-        };
-      })
+      )
     );
 
     return results;
@@ -139,6 +145,7 @@ export class UploadService implements IUploadService {
         originalName: uploadSession.originalName,
         key: uploadSession.key,
         size: uploadSession.size,
+        storedName: uploadSession.storedName,
         mimeType: uploadSession.mimeType,
         creatorId: userId,
         expiresAt: null,
