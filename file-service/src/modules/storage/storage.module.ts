@@ -1,23 +1,23 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { StorageService } from './storage.service';
-import { StorageItemService } from './storage.item.service';
-import { StorageItem, StorageItemSchema } from './schemas/storage.item.schema';
-import { UserStorage, UserStorageSchema } from './schemas/storage.schema';
-import { PermissionClientModule } from '../permission-client/permission-client.module';
-import { TokenClientModule } from '../token-client/token-client.module';
-import { StorageController } from './storage.controller';
-import { FileModule } from '../file/file.module';
+import { Module, forwardRef } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { StorageService } from "./storage.service";
+import { StorageItemService } from "./storage.item.service";
+import { StorageItem, StorageItemSchema } from "./schemas/storage.item.schema";
+import { UserStorage, UserStorageSchema } from "./schemas/storage.schema";
+import { PermissionClientModule } from "../permission-client/permission-client.module";
+import { TokenClientModule } from "../token-client/token-client.module";
+import { StorageController } from "./storage.controller";
+import { FileModule } from "../file/file.module";
 import {
   STORAGE_SERVICE_TOKEN,
   STORAGE_ITEM_SERVICE_TOKEN,
-} from './interfaces/storage-service.tokens';
+} from "./interfaces/storage-service.tokens";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: 'UserStorage', schema: UserStorageSchema },
-      { name: 'StorageItem', schema: StorageItemSchema },
+      { name: "UserStorage", schema: UserStorageSchema },
+      { name: "StorageItem", schema: StorageItemSchema },
     ]),
     PermissionClientModule,
     TokenClientModule,
@@ -39,4 +39,3 @@ import {
   exports: [STORAGE_SERVICE_TOKEN, STORAGE_ITEM_SERVICE_TOKEN, StorageService],
 })
 export class StorageModule {}
-

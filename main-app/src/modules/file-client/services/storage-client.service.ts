@@ -76,10 +76,15 @@ export class StorageClientService {
   }
 
   async restoreStorageItem(data: RestoreStorageItemPayload): Promise<DeleteStorageItemResult> {
-    return this.send<DeleteStorageItemResult, RestoreStorageItemPayload>('storage.restoreItem', data);
+    return this.send<DeleteStorageItemResult, RestoreStorageItemPayload>(
+      'storage.restoreItem',
+      data,
+    );
   }
 
-  async permanentDeleteStorageItem(data: DeleteStorageItemPayload): Promise<DeleteStorageItemResult> {
+  async permanentDeleteStorageItem(
+    data: DeleteStorageItemPayload,
+  ): Promise<DeleteStorageItemResult> {
     return this.send<DeleteStorageItemResult, DeleteStorageItemPayload>(
       'storage.permanentDeleteItem',
       data,

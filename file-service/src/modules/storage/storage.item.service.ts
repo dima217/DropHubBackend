@@ -1,14 +1,23 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { StorageItem } from './schemas/storage.item.schema';
-import { IStorageItemService } from './interfaces/storage-item-service.interface';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { StorageItem } from "./schemas/storage.item.schema";
+import { IStorageItemService } from "./interfaces/storage-item-service.interface";
 
 @Injectable()
 export class StorageItemService implements IStorageItemService {
-  constructor(@InjectModel('StorageItem') private readonly itemModel: Model<StorageItem>) {}
+  constructor(
+    @InjectModel("StorageItem") private readonly itemModel: Model<StorageItem>
+  ) {}
 
-  async getItemsByParent(parentId: string | null, storageId?: string): Promise<StorageItem[]> {
+  async getItemsByParent(
+    parentId: string | null,
+    storageId?: string
+  ): Promise<StorageItem[]> {
     const query: any = { deletedAt: null };
 
     if (parentId === null) {
@@ -23,10 +32,12 @@ export class StorageItemService implements IStorageItemService {
     return this.itemModel.find(query).lean().exec();
   }
 
-  async getChildrenCount(itemId: string): Promise<{ total: number; files: number; folders: number }> {
+  async getChildrenCount(
+    itemId: string
+  ): Promise<{ total: number; files: number; folders: number }> {
     const children = await this.itemModel
       .find({ parentId: new Types.ObjectId(itemId), deletedAt: null })
-      .select('isDirectory')
+      .select("isDirectory")
       .lean()
       .exec();
 
@@ -40,7 +51,7 @@ export class StorageItemService implements IStorageItemService {
   async getItemById(itemId: string): Promise<StorageItem> {
     const item = await this.itemModel.findById(itemId).lean().exec();
     if (!item) {
-      throw new NotFoundException('Item not found.');
+      throw new NotFoundException("Item not found.");
     }
     return item;
   }
@@ -52,7 +63,7 @@ export class StorageItemService implements IStorageItemService {
     fileId: string | null,
     userId: string,
     storageId: string,
-    creatorId?: number,
+    creatorId?: number
   ): Promise<StorageItem> {
     const item = new this.itemModel({
       userId,
@@ -69,9 +80,14 @@ export class StorageItemService implements IStorageItemService {
   async softDeleteItem(itemId: string): Promise<void> {
     const now = new Date();
     const itemIdsToUpdate = [new Types.ObjectId(itemId)];
-    
-    const findAllChildren = async (parentId: Types.ObjectId): Promise<Types.ObjectId[]> => {
-      const children = await this.itemModel.find({ parentId }).select('_id isDirectory').exec();
+
+    const findAllChildren = async (
+      parentId: Types.ObjectId
+    ): Promise<Types.ObjectId[]> => {
+      const children = await this.itemModel
+        .find({ parentId })
+        .select("_id isDirectory")
+        .exec();
       let ids: Types.ObjectId[] = [];
       for (const child of children) {
         ids.push(child._id);
@@ -91,10 +107,13 @@ export class StorageItemService implements IStorageItemService {
     );
   }
 
-  async restoreItem(itemId: string, newParentId?: string | null): Promise<void> {
+  async restoreItem(
+    itemId: string,
+    newParentId?: string | null
+  ): Promise<void> {
     const item = await this.itemModel.findById(itemId);
     if (!item) {
-      throw new NotFoundException('Item not found.');
+      throw new NotFoundException("Item not found.");
     }
 
     const update: any = { deletedAt: null };
@@ -103,24 +122,24 @@ export class StorageItemService implements IStorageItemService {
       if (newParentId !== null) {
         const parent = await this.itemModel.findById(newParentId);
         if (!parent) {
-          throw new NotFoundException('Target parent folder not found.');
+          throw new NotFoundException("Target parent folder not found.");
         }
         if (parent.deletedAt) {
-          throw new BadRequestException('Target parent folder is in trash.');
+          throw new BadRequestException("Target parent folder is in trash.");
         }
         if (!parent.isDirectory) {
-          throw new BadRequestException('Target parent must be a directory.');
+          throw new BadRequestException("Target parent must be a directory.");
         }
         update.parentId = new Types.ObjectId(newParentId);
       } else {
-        update.parentId = null; 
+        update.parentId = null;
       }
     } else {
       if (item.parentId) {
         const parent = await this.itemModel.findById(item.parentId);
         if (!parent || parent.deletedAt) {
           throw new BadRequestException(
-            'Original parent folder is deleted or missing. Please provide a new parent.',
+            "Original parent folder is deleted or missing. Please provide a new parent."
           );
         }
       }
@@ -129,8 +148,13 @@ export class StorageItemService implements IStorageItemService {
 
     const itemIdsToRestore: Types.ObjectId[] = [];
 
-    const findAllChildren = async (parentId: Types.ObjectId): Promise<Types.ObjectId[]> => {
-      const children = await this.itemModel.find({ parentId }).select('_id isDirectory').exec();
+    const findAllChildren = async (
+      parentId: Types.ObjectId
+    ): Promise<Types.ObjectId[]> => {
+      const children = await this.itemModel
+        .find({ parentId })
+        .select("_id isDirectory")
+        .exec();
       let ids: Types.ObjectId[] = [];
       for (const child of children) {
         ids.push(child._id);
@@ -147,7 +171,7 @@ export class StorageItemService implements IStorageItemService {
     if (itemIdsToRestore.length > 0) {
       await this.itemModel.updateMany(
         { _id: { $in: itemIdsToRestore } },
-        { $set: { deletedAt: null } },
+        { $set: { deletedAt: null } }
       );
     }
   }
@@ -163,9 +187,12 @@ export class StorageItemService implements IStorageItemService {
   async deleteItem(itemId: string): Promise<void> {
     const itemsToDelete = await this.itemModel
       .find({
-        $or: [{ _id: new Types.ObjectId(itemId) }, { parentId: new Types.ObjectId(itemId) }],
+        $or: [
+          { _id: new Types.ObjectId(itemId) },
+          { parentId: new Types.ObjectId(itemId) },
+        ],
       })
-      .select('_id')
+      .select("_id")
       .exec();
 
     const ids = itemsToDelete.map((item) => item._id);
@@ -176,18 +203,18 @@ export class StorageItemService implements IStorageItemService {
   async getAllItemsByStorageId(storageId: string): Promise<StorageItem[]> {
     const query = { storageId: storageId, deletedAt: null };
 
-    return this.itemModel.find(query).select('-__v').lean().exec();
+    return this.itemModel.find(query).select("-__v").lean().exec();
   }
 
   async updateItemTags(itemId: string, tags: string[]): Promise<StorageItem> {
     const item = await this.itemModel.findByIdAndUpdate(
       itemId,
       { $set: { tags } },
-      { new: true },
+      { new: true }
     );
 
     if (!item) {
-      throw new NotFoundException('Item not found.');
+      throw new NotFoundException("Item not found.");
     }
 
     return item;
@@ -201,7 +228,14 @@ export class StorageItemService implements IStorageItemService {
     limit?: number;
     offset?: number;
   }): Promise<StorageItem[]> {
-    const { storageIds, query, tags, creatorId, limit = 50, offset = 0 } = params;
+    const {
+      storageIds,
+      query,
+      tags,
+      creatorId,
+      limit = 50,
+      offset = 0,
+    } = params;
 
     if (storageIds.length === 0) {
       return [];
@@ -215,7 +249,7 @@ export class StorageItemService implements IStorageItemService {
 
     // Фильтр по названию
     if (query) {
-      mongoQuery.name = { $regex: query, $options: 'i' };
+      mongoQuery.name = { $regex: query, $options: "i" };
     }
 
     // Фильтр по тегам - ищем элементы, у которых есть хотя бы один из указанных тегов
@@ -238,14 +272,19 @@ export class StorageItemService implements IStorageItemService {
     return items;
   }
 
-  async moveItem(itemId: string, newParentId: string | null): Promise<StorageItem> {
+  async moveItem(
+    itemId: string,
+    newParentId: string | null
+  ): Promise<StorageItem> {
     const item = await this.itemModel.findById(itemId);
     if (!item) {
-      throw new NotFoundException('Item not found.');
+      throw new NotFoundException("Item not found.");
     }
 
     if (item.deletedAt) {
-      throw new BadRequestException('Cannot move deleted item. Restore it first.');
+      throw new BadRequestException(
+        "Cannot move deleted item. Restore it first."
+      );
     }
 
     if (
@@ -256,33 +295,35 @@ export class StorageItemService implements IStorageItemService {
     }
 
     if (item.isDirectory && itemId === newParentId) {
-      throw new BadRequestException('Cannot move folder into itself.');
+      throw new BadRequestException("Cannot move folder into itself.");
     }
 
     if (newParentId !== null) {
       const parent = await this.itemModel.findById(newParentId);
       if (!parent) {
-        throw new NotFoundException('Target folder not found.');
+        throw new NotFoundException("Target folder not found.");
       }
       if (!parent.isDirectory) {
-        throw new BadRequestException('Target must be a folder.');
+        throw new BadRequestException("Target must be a folder.");
       }
       if (parent.deletedAt) {
-        throw new BadRequestException('Cannot move item to deleted folder.');
+        throw new BadRequestException("Cannot move item to deleted folder.");
       }
       if (parent.storageId !== item.storageId) {
-        throw new BadRequestException('Cannot move item to another storage.');
+        throw new BadRequestException("Cannot move item to another storage.");
       }
 
       if (item.isDirectory) {
         let currentId: Types.ObjectId | null = parent._id;
         while (currentId) {
           if (currentId.toString() === itemId) {
-            throw new BadRequestException('Cannot move folder into its own subdirectory.');
+            throw new BadRequestException(
+              "Cannot move folder into its own subdirectory."
+            );
           }
           const currentItem = await this.itemModel
             .findById(currentId)
-            .select('parentId')
+            .select("parentId")
             .lean()
             .exec();
           if (!currentItem || !currentItem.parentId) {
@@ -300,16 +341,18 @@ export class StorageItemService implements IStorageItemService {
 
   async renameItem(itemId: string, newName: string): Promise<StorageItem> {
     if (!newName || newName.trim().length === 0) {
-      throw new BadRequestException('Item name cannot be empty.');
+      throw new BadRequestException("Item name cannot be empty.");
     }
 
     const item = await this.itemModel.findById(itemId);
     if (!item) {
-      throw new NotFoundException('Item not found.');
+      throw new NotFoundException("Item not found.");
     }
 
     if (item.deletedAt) {
-      throw new BadRequestException('Cannot rename deleted item. Restore it first.');
+      throw new BadRequestException(
+        "Cannot rename deleted item. Restore it first."
+      );
     }
 
     // Проверяем, нет ли уже элемента с таким именем в той же папке
@@ -322,7 +365,9 @@ export class StorageItemService implements IStorageItemService {
     });
 
     if (existingItem) {
-      throw new BadRequestException('An item with this name already exists in this folder.');
+      throw new BadRequestException(
+        "An item with this name already exists in this folder."
+      );
     }
 
     item.name = newName.trim();
@@ -333,35 +378,37 @@ export class StorageItemService implements IStorageItemService {
     itemId: string,
     targetParentId: string | null,
     userId: string,
-    storageId: string,
+    storageId: string
   ): Promise<StorageItem> {
     const sourceItem = await this.itemModel.findById(itemId).lean();
     if (!sourceItem) {
-      throw new NotFoundException('Source item not found.');
+      throw new NotFoundException("Source item not found.");
     }
 
     if (sourceItem.deletedAt) {
-      throw new BadRequestException('Cannot copy deleted item. Restore it first.');
+      throw new BadRequestException(
+        "Cannot copy deleted item. Restore it first."
+      );
     }
 
     if (sourceItem.storageId !== storageId) {
-      throw new BadRequestException('Cannot copy item to another storage.');
+      throw new BadRequestException("Cannot copy item to another storage.");
     }
 
     // Проверяем target parent
     if (targetParentId !== null) {
       const targetParent = await this.itemModel.findById(targetParentId);
       if (!targetParent) {
-        throw new NotFoundException('Target folder not found.');
+        throw new NotFoundException("Target folder not found.");
       }
       if (!targetParent.isDirectory) {
-        throw new BadRequestException('Target must be a folder.');
+        throw new BadRequestException("Target must be a folder.");
       }
       if (targetParent.deletedAt) {
-        throw new BadRequestException('Cannot copy item to deleted folder.');
+        throw new BadRequestException("Cannot copy item to deleted folder.");
       }
       if (targetParent.storageId !== storageId) {
-        throw new BadRequestException('Cannot copy item to another storage.');
+        throw new BadRequestException("Cannot copy item to another storage.");
       }
     }
 
@@ -383,13 +430,14 @@ export class StorageItemService implements IStorageItemService {
       counter++;
     }
 
-    // Создаем копию элемента
     const copiedItem = new this.itemModel({
       userId,
       name: copyName,
       isDirectory: sourceItem.isDirectory,
       parentId: targetParentId ? new Types.ObjectId(targetParentId) : null,
-      fileId: sourceItem.fileId ? new Types.ObjectId(sourceItem.fileId) : undefined,
+      fileId: sourceItem.fileId
+        ? new Types.ObjectId(sourceItem.fileId)
+        : undefined,
       storageId: storageId,
       creatorId: sourceItem.creatorId || parseInt(userId, 10),
       tags: sourceItem.tags ? [...sourceItem.tags] : [],
@@ -399,9 +447,14 @@ export class StorageItemService implements IStorageItemService {
 
     // Если это директория, рекурсивно копируем все дочерние элементы
     if (sourceItem.isDirectory) {
-      const copyChildren = async (sourceParentId: Types.ObjectId, targetParentId: Types.ObjectId) => {
-        const children = await this.itemModel.find({ parentId: sourceParentId, deletedAt: null }).lean();
-        
+      const copyChildren = async (
+        sourceParentId: Types.ObjectId,
+        targetParentId: Types.ObjectId
+      ) => {
+        const children = await this.itemModel
+          .find({ parentId: sourceParentId, deletedAt: null })
+          .lean();
+
         for (const child of children) {
           const childCopyName = child.name;
           let finalChildName = childCopyName;
@@ -446,4 +499,3 @@ export class StorageItemService implements IStorageItemService {
     return savedItem;
   }
 }
-

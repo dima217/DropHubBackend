@@ -3,25 +3,28 @@ import {
   ForbiddenException,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { UserStorageDocument } from './schemas/storage.schema';
-import { Model } from 'mongoose';
-import { StorageItemService } from './storage.item.service';
-import { AccessRole, ResourceType } from '../permission-client/permission-client.service';
-import { PermissionClientService } from '../permission-client/permission-client.service';
-import { StorageItem } from './schemas/storage.item.schema';
-import { TokenClientService } from '../token-client/token-client.service';
-import { IStorageService } from './interfaces/storage-service.interface';
-import type { IStorageItemService } from './interfaces';
-import { STORAGE_ITEM_SERVICE_TOKEN } from './interfaces';
-import { Inject, forwardRef } from '@nestjs/common';
-import type { IFileService } from '../file/interfaces';
-import { FILE_SERVICE_TOKEN } from '../file/interfaces';
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { UserStorageDocument } from "./schemas/storage.schema";
+import { Model } from "mongoose";
+import { StorageItemService } from "./storage.item.service";
+import {
+  AccessRole,
+  ResourceType,
+} from "../permission-client/permission-client.service";
+import { PermissionClientService } from "../permission-client/permission-client.service";
+import { StorageItem } from "./schemas/storage.item.schema";
+import { TokenClientService } from "../token-client/token-client.service";
+import { IStorageService } from "./interfaces/storage-service.interface";
+import type { IStorageItemService } from "./interfaces";
+import { STORAGE_ITEM_SERVICE_TOKEN } from "./interfaces";
+import { Inject, forwardRef } from "@nestjs/common";
+import type { IFileService } from "../file/interfaces";
+import { FILE_SERVICE_TOKEN } from "../file/interfaces";
 import {
   StorageItemMapper,
   type EnrichedStorageItemDto,
-} from './mappers/storage-item.mapper';
+} from "./mappers/storage-item.mapper";
 
 interface GetStorageItemsParams {
   storageId: string;
@@ -59,11 +62,14 @@ interface MoveStorageItemParams {
 @Injectable()
 export class StorageService implements IStorageService {
   constructor(
-    @InjectModel('UserStorage') private readonly storageModel: Model<UserStorageDocument>,
+    @InjectModel("UserStorage")
+    private readonly storageModel: Model<UserStorageDocument>,
     private readonly permissionClient: PermissionClientService,
-    @Inject(STORAGE_ITEM_SERVICE_TOKEN) private readonly storageItemService: IStorageItemService,
+    @Inject(STORAGE_ITEM_SERVICE_TOKEN)
+    private readonly storageItemService: IStorageItemService,
     private readonly tokenService: TokenClientService,
-    @Inject(forwardRef(() => FILE_SERVICE_TOKEN)) private readonly fileService: IFileService,
+    @Inject(forwardRef(() => FILE_SERVICE_TOKEN))
+    private readonly fileService: IFileService
   ) {}
 
   async createStorage(userId: number) {
@@ -86,7 +92,7 @@ export class StorageService implements IStorageService {
     // Permission check is performed in main-app before calling this service
 
     if (!isDirectory && !fileId) {
-      throw new BadRequestException('File items must have a fileId.');
+      throw new BadRequestException("File items must have a fileId.");
     }
 
     const item = await this.storageItemService.createItem(
@@ -96,7 +102,7 @@ export class StorageService implements IStorageService {
       fileId,
       userId.toString(),
       storageId,
-      userId,
+      userId
     );
 
     return item;
@@ -139,17 +145,19 @@ export class StorageService implements IStorageService {
 
   async getStorageItemByToken(token: string): Promise<StorageItem> {
     if (!token) {
-      throw new UnauthorizedException('Token is required.');
+      throw new UnauthorizedException("Token is required.");
     }
 
     const payload = await this.tokenService.validateToken(token);
 
-    if (payload.resourceType !== 'storage') {
-      throw new ForbiddenException('Token is not valid for accessing storage items.');
+    if (payload.resourceType !== "storage") {
+      throw new ForbiddenException(
+        "Token is not valid for accessing storage items."
+      );
     }
 
-    if (payload.role !== 'R' && payload.role !== 'RW') {
-      throw new ForbiddenException('Token does not grant read access.');
+    if (payload.role !== "R" && payload.role !== "RW") {
+      throw new ForbiddenException("Token does not grant read access.");
     }
 
     const itemId = payload.resourceId;
@@ -158,7 +166,9 @@ export class StorageService implements IStorageService {
     const responseItem: ItemWithChildren = { ...item };
 
     if (item.isDirectory) {
-      const children = await this.storageItemService.getItemsByParent(item._id.toString());
+      const children = await this.storageItemService.getItemsByParent(
+        item._id.toString()
+      );
 
       responseItem.children = children;
     }
@@ -166,16 +176,22 @@ export class StorageService implements IStorageService {
     return responseItem;
   }
 
-  private async enrichItemsWithMetadata(items: StorageItem[]): Promise<EnrichedStorageItemDto[]> {
+  private async enrichItemsWithMetadata(
+    items: StorageItem[]
+  ): Promise<EnrichedStorageItemDto[]> {
     const enrichedItems = await Promise.all(
       items.map(async (item): Promise<EnrichedStorageItemDto> => {
         if (item.isDirectory) {
-          const childrenCount = await this.storageItemService.getChildrenCount(item._id.toString());
+          const childrenCount = await this.storageItemService.getChildrenCount(
+            item._id.toString()
+          );
           return StorageItemMapper.toDirectoryDto(item, childrenCount);
         } else {
           if (item.fileId) {
             try {
-              const fileMeta = await this.fileService.getFileById(item.fileId.toString());
+              const fileMeta = await this.fileService.getFileById(
+                item.fileId.toString()
+              );
               return StorageItemMapper.toFileDto(item, fileMeta);
             } catch (error) {
               return StorageItemMapper.toFileDto(item);
@@ -183,22 +199,31 @@ export class StorageService implements IStorageService {
           }
           return StorageItemMapper.toFileDto(item);
         }
-      }),
+      })
     );
 
     return enrichedItems;
   }
 
-  async getFullStorageStructure(storageId: string, userId: number): Promise<EnrichedStorageItemDto[]> {
+  async getFullStorageStructure(
+    storageId: string,
+    userId: number
+  ): Promise<EnrichedStorageItemDto[]> {
     // Permission check is performed in main-app before calling this service
 
-    const items = await this.storageItemService.getAllItemsByStorageId(storageId);
+    const items =
+      await this.storageItemService.getAllItemsByStorageId(storageId);
 
     return this.enrichItemsWithMetadata(items);
   }
 
-  async getStorageStructure(params: GetStorageItemsParams): Promise<EnrichedStorageItemDto[]> {
-    const items = await this.storageItemService.getItemsByParent(params.parentId, params.storageId);
+  async getStorageStructure(
+    params: GetStorageItemsParams
+  ): Promise<EnrichedStorageItemDto[]> {
+    const items = await this.storageItemService.getItemsByParent(
+      params.parentId,
+      params.storageId
+    );
 
     return this.enrichItemsWithMetadata(items);
   }
@@ -207,7 +232,9 @@ export class StorageService implements IStorageService {
     const item = await this.storageItemService.getItemById(params.itemId);
 
     if (item.storageId !== params.storageId) {
-      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+      throw new ForbiddenException(
+        "Invalid storage item or ownership mismatch."
+      );
     }
 
     await this.storageItemService.softDeleteItem(params.itemId);
@@ -219,10 +246,15 @@ export class StorageService implements IStorageService {
     const item = await this.storageItemService.getItemById(params.itemId);
 
     if (item.storageId !== params.storageId) {
-      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+      throw new ForbiddenException(
+        "Invalid storage item or ownership mismatch."
+      );
     }
 
-    await this.storageItemService.restoreItem(params.itemId, params.newParentId);
+    await this.storageItemService.restoreItem(
+      params.itemId,
+      params.newParentId
+    );
 
     return { success: true, itemId: params.itemId };
   }
@@ -231,7 +263,9 @@ export class StorageService implements IStorageService {
     const item = await this.storageItemService.getItemById(params.itemId);
 
     if (item.storageId !== params.storageId) {
-      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+      throw new ForbiddenException(
+        "Invalid storage item or ownership mismatch."
+      );
     }
 
     await this.storageItemService.deleteItem(params.itemId);
@@ -244,16 +278,25 @@ export class StorageService implements IStorageService {
     return items.map((item) => StorageItemMapper.toBaseDto(item));
   }
 
-  async updateStorageItemTags(storageId: string, itemId: string, tags: string[]) {
+  async updateStorageItemTags(
+    storageId: string,
+    itemId: string,
+    tags: string[]
+  ) {
     // Permission check is performed in main-app before calling this service
 
     const item = await this.storageItemService.getItemById(itemId);
 
     if (item.storageId !== storageId) {
-      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+      throw new ForbiddenException(
+        "Invalid storage item or ownership mismatch."
+      );
     }
 
-    const updatedItem = await this.storageItemService.updateItemTags(itemId, tags);
+    const updatedItem = await this.storageItemService.updateItemTags(
+      itemId,
+      tags
+    );
     return StorageItemMapper.toBaseDto(updatedItem);
   }
 
@@ -261,10 +304,15 @@ export class StorageService implements IStorageService {
     const item = await this.storageItemService.getItemById(params.itemId);
 
     if (item.storageId !== params.storageId) {
-      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+      throw new ForbiddenException(
+        "Invalid storage item or ownership mismatch."
+      );
     }
 
-    const updatedItem = await this.storageItemService.moveItem(params.itemId, params.newParentId);
+    const updatedItem = await this.storageItemService.moveItem(
+      params.itemId,
+      params.newParentId
+    );
     return StorageItemMapper.toBaseDto(updatedItem);
   }
 
@@ -291,10 +339,15 @@ export class StorageService implements IStorageService {
     const item = await this.storageItemService.getItemById(params.itemId);
 
     if (item.storageId !== params.storageId) {
-      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+      throw new ForbiddenException(
+        "Invalid storage item or ownership mismatch."
+      );
     }
 
-    const updatedItem = await this.storageItemService.renameItem(params.itemId, params.newName);
+    const updatedItem = await this.storageItemService.renameItem(
+      params.itemId,
+      params.newName
+    );
     return StorageItemMapper.toBaseDto(updatedItem);
   }
 
@@ -307,16 +360,17 @@ export class StorageService implements IStorageService {
     const item = await this.storageItemService.getItemById(params.itemId);
 
     if (item.storageId !== params.storageId) {
-      throw new ForbiddenException('Invalid storage item or ownership mismatch.');
+      throw new ForbiddenException(
+        "Invalid storage item or ownership mismatch."
+      );
     }
 
     const copiedItem = await this.storageItemService.copyItem(
       params.itemId,
       params.targetParentId,
       params.userId.toString(),
-      params.storageId,
+      params.storageId
     );
     return StorageItemMapper.toBaseDto(copiedItem);
   }
 }
-

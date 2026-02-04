@@ -4,7 +4,6 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateStorageItemDto {
   @ApiProperty({ description: 'Storage ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @IsString()
-  @IsUUID('4')
   storageId: string;
 
   @ApiProperty({ description: 'Item name', example: 'My Folder' })
@@ -23,7 +22,6 @@ export class CreateStorageItemDto {
   })
   @IsOptional()
   @IsString()
-  @IsUUID('4')
   parentId?: string | null;
 
   @ApiProperty({
@@ -37,4 +35,3 @@ export class CreateStorageItemDto {
   @IsUUID('4')
   fileId?: string | null;
 }
-
