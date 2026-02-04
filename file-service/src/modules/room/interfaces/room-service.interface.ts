@@ -1,9 +1,14 @@
+import { UpdateRoomDto } from "../dto/update-room.dto";
+
 export interface IRoomService {
   getRoomsByUserID(userId: number): Promise<any[]>;
   createRoom(params: { userId: number; username?: string }): Promise<{
     success: boolean;
     roomId: string;
   }>;
+  updateRoom(
+    data: UpdateRoomDto
+  ): Promise<{ success: boolean; roomId: string }>;
   getRoomById(roomId: string): Promise<any | null>;
   getRoomsByIds(roomIds: string[]): Promise<any[]>;
   bindFileToRoom(roomId: string, fileId: string): Promise<void>;

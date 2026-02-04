@@ -21,6 +21,8 @@ import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { RoomService } from '../services/room.service';
+import { UpdateRoomDto } from '../dto/update-room.dto';
+import { RoomsGateway } from '../gateway/room.gateway';
 
 @ApiTags('Rooms')
 @Controller('/room')
@@ -28,6 +30,7 @@ export class RoomController {
   constructor(
     private readonly roomClient: RoomClientService,
     private readonly roomService: RoomService,
+    private readonly roomGateway: RoomsGateway,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -93,6 +96,17 @@ export class RoomController {
       throw new BadRequestException('Username is required');
     }
     return this.roomService.createRoom(req.user.id, body.username, body.expiresAt);
+  }
+
+  @Post('/update')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.ROOM, [AccessRole.ADMIN], 'body', 'roomId')
+  async updateRoom(@Req() req: RequestWithUser, @Body() body: UpdateRoomDto) {
+    const result = await this.roomClient.updateRoomById(body);
+    if (result.success) {
+      this.roomGateway.sendRoomUpdate(result.roomId);
+    }
+    return result;
   }
 
   @Delete()

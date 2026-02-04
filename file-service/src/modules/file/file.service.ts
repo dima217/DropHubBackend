@@ -29,6 +29,7 @@ import {
 } from "./interfaces/file-service.interface";
 import { ROOM_SERVICE_TOKEN } from "../room/interfaces";
 import type { IRoomService } from "../room/interfaces";
+import { UpdateFileDto } from "./dto/update-file.dto";
 
 const fileMetaSchema = z.object({
   _id: z.any(),
@@ -117,6 +118,32 @@ export class FileService implements IFileService {
       console.error(`Failed to expire file ${fileId}`, err);
       return null;
     }
+  }
+
+  async updateFile(params: UpdateFileDto) {
+    const { roomId, fileId, storedName } = params;
+
+    const room = await this.roomModel.findById(roomId).lean();
+    if (!room) {
+      throw new NotFoundException("Room not found");
+    }
+
+    if (!room.files?.some((f) => f.toString() === fileId)) {
+      throw new BadRequestException("File does not belong to this room");
+    }
+
+    await this.fileModel.findByIdAndUpdate(fileId, {
+      $set: {
+        storedName,
+      },
+    });
+
+    await this.invalidateRoomCache(roomId);
+
+    return {
+      success: true,
+      roomId: room._id.toString(),
+    };
   }
 
   async getFilesByRoomID(params: AuthenticatedGettingFilesByRoomParams) {

@@ -1,8 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { CreateRoomPayload, CreateRoomResult, DeleteRoomResult, RoomDto } from '../types/room';
+import {
+  CreateRoomPayload,
+  CreateRoomResult,
+  DeleteRoomResult,
+  RoomDto,
+  UpdateRoomResult,
+} from '../types/room';
 import { RoomDetailsDto } from '@application/room/dto/room.details.dto';
+import { UpdateRoomDto } from '@application/room/dto/update-room.dto';
 
 @Injectable()
 export class RoomClientService {
@@ -21,6 +28,10 @@ export class RoomClientService {
 
   async getRoomsByUserId(userId: number): Promise<RoomDto[]> {
     return this.send<RoomDto[], { userId: number }>('room.getByUserId', { userId });
+  }
+
+  async updateRoomById(data: UpdateRoomDto): Promise<UpdateRoomResult> {
+    return this.send<UpdateRoomResult, UpdateRoomDto>('room.update', data);
   }
 
   async bindFileToRoom(roomId: string, fileId: string): Promise<void> {

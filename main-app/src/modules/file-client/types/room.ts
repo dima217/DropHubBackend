@@ -33,6 +33,10 @@ export interface CreateRoomResult {
   roomId: string;
 }
 
+export interface UpdateRoomResult {
+  success: boolean;
+  roomId: string;
+}
 export interface DeleteRoomResult {
   message: string;
 }

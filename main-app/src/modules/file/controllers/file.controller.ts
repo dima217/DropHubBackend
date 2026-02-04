@@ -21,12 +21,17 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
+import { UpdateFileDto } from '../dto/update-file.dto';
+import { RoomsGateway } from '@application/room/gateway/room.gateway';
 
 @ApiTags('Files')
 @ApiExtraModels(DeleteFileResponseDto, RoomFileResponseDto, ArchiveRoomResponseDto)
 @Controller('file')
 export class FileController {
-  constructor(private readonly fileClient: FileClientService) {}
+  constructor(
+    private readonly fileClient: FileClientService,
+    private readonly roomGateway: RoomsGateway,
+  ) {}
 
   @UseGuards(JwtAuthGuard, PermissionGuard)
   @RequirePermission(
@@ -92,6 +97,22 @@ export class FileController {
   async getFiles(@Body() dto: GetFilesDto, @Req() req: RequestWithUser) {
     const files = await this.fileClient.getFilesByRoom(dto.roomId, req.user.id);
     return files;
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.ROOM,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'roomId',
+  )
+  @Post('/update')
+  async updateFile(@Body() dto: UpdateFileDto) {
+    const result = await this.fileClient.updateRoomFile(dto);
+    if (result) {
+      this.roomGateway.sendRoomUpdate(result.roomId);
+    }
+    return result;
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)

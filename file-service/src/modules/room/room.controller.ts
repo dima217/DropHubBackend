@@ -2,6 +2,7 @@ import { Controller, Inject } from "@nestjs/common";
 import { EventPattern, MessagePattern, Payload } from "@nestjs/microservices";
 import type { IRoomService } from "./interfaces";
 import { ROOM_SERVICE_TOKEN } from "./interfaces";
+import { UpdateRoomDto } from "./dto/update-room.dto";
 
 @Controller()
 export class RoomController {
@@ -24,6 +25,11 @@ export class RoomController {
   @MessagePattern("room.bindFile")
   async bindFile(@Payload() data: { roomId: string; fileId: string }) {
     return this.roomService.bindFileToRoom(data.roomId, data.fileId);
+  }
+
+  @MessagePattern("room.update")
+  async update(@Payload() data: UpdateRoomDto) {
+    return this.roomService.updateRoom(data);
   }
 
   @MessagePattern("room.delete")

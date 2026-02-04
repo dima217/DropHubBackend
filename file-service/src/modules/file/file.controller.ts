@@ -17,6 +17,7 @@ import type {
 } from "./interfaces";
 import type { UploadData } from "./interfaces/file-request.interface";
 import { UploadConfirmDto } from "./dto/upload/upload-confirm.dto";
+import { UpdateFileDto } from "./dto/update-file.dto";
 
 @Controller()
 export class FileController {
@@ -55,6 +56,11 @@ export class FileController {
   @MessagePattern("file.delete")
   async deleteFiles(@Payload() data: { fileIds: string[] }) {
     return this.fileService.deleteFiles(data);
+  }
+
+  @MessagePattern("file.update")
+  async updateFile(@Payload() data: UpdateFileDto) {
+    return this.fileService.updateFile(data);
   }
 
   // Upload operations

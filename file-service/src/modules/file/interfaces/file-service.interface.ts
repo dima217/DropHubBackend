@@ -2,6 +2,7 @@ import { FileDocument } from "../schemas/file.schema";
 import { RoomDocument } from "../../room/schemas/room.schema";
 import { CreateFileMetaDto } from "../dto/create-file-meta.dto";
 import { DeleteFileDto } from "../dto/delete-file.dto";
+import { UpdateFileDto } from "../dto/update-file.dto";
 
 export interface AuthenticatedGettingFilesByRoomParams {
   roomId: string;
@@ -36,6 +37,7 @@ export type RoomWithFiles = {
 
 export interface IFileService {
   createFileMeta(dto: CreateFileMetaDto): Promise<FileDocument>;
+  updateFile(dto: UpdateFileDto): Promise<{ success: boolean; roomId: string }>;
   invalidateRoomCache(roomId: string): Promise<void>;
   deleteFiles(dto: DeleteFileDto): Promise<(FileDocument | null)[]>;
   getFilesByRoomID(

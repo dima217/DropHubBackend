@@ -74,3 +74,8 @@ export interface InitMultipartResult {
 export interface SuccessResponse {
   success: boolean;
 }
+
+export interface RoomFileUpdateResponse {
+  success: boolean;
+  roomId: string;
+}

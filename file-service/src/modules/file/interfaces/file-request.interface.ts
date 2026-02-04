@@ -1,7 +1,7 @@
 export interface FilesData {
   originalName: string;
   fileSize: number;
-  storeName: string;
+  storedName: string;
   mimeType: string;
   uploadToken?: string;
 }

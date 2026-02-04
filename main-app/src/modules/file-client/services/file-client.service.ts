@@ -10,11 +10,13 @@ import {
   UploadByTokenPayload,
   InitMultipartResult,
   SuccessResponse,
+  RoomFileUpdateResponse,
 } from '../types/file';
 import { UploadInitMultipartDto } from '@application/file/dto/upload/multipart/upload-init-multipart.dto';
 import { UploadCompleteDto } from '@application/file/dto/upload/upload-complete.dto';
 import { UploadConfirmDto } from '@application/file/dto/upload/upload.confirm.dto';
 import { UploadInitDto } from '@application/file/dto/upload/upload-init.dto';
+import { UpdateFileDto } from '@application/file/dto/update-file.dto';
 
 @Injectable()
 export class FileClientService {
@@ -44,6 +46,10 @@ export class FileClientService {
       roomId,
       userId,
     });
+  }
+
+  async updateRoomFile(data: UpdateFileDto): Promise<RoomFileUpdateResponse> {
+    return this.send<RoomFileUpdateResponse, UpdateFileDto>('file.update', data);
   }
 
   async deleteFiles(fileIds: string[], roomId: string): Promise<{ success: boolean }> {

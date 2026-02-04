@@ -84,7 +84,7 @@ export class UploadService implements IUploadService {
 
     const results = await Promise.all(
       params.files.map(
-        async ({ originalName, mimeType, fileSize, storeName }) => {
+        async ({ originalName, mimeType, fileSize, storedName }) => {
           if (!fileSize || !originalName || !params.userId) {
             throw new BadRequestException(
               "Invalid upload data for one of the files"
@@ -101,7 +101,7 @@ export class UploadService implements IUploadService {
             originalName,
             mimeType,
             size: fileSize,
-            storedName: storeName,
+            storedName: storedName,
             creatorId: params.userId,
             roomId: params.roomId,
             storageId: params.storageId,

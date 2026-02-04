@@ -17,6 +17,7 @@ import {
 } from "../permission-client/permission-client.service";
 import { IRoomService } from "./interfaces/room-service.interface";
 import { FILE_SERVICE_TOKEN, type IFileService } from "../file/interfaces";
+import { UpdateRoomDto } from "./dto/update-room.dto";
 
 interface AuthenticationDeleteRoomParams {
   userId: number;
@@ -159,6 +160,14 @@ export class RoomService implements IRoomService {
         status: "IN_PROGRESS",
       },
     };
+  }
+
+  async updateRoom(data: UpdateRoomDto) {
+    if (!data.owner) return { success: false, roomId: data.roomId };
+    await this.roomModel.findByIdAndUpdate(data.roomId, {
+      $set: { owner: data.owner },
+    });
+    return { success: true, roomId: data.roomId };
   }
 
   async bindFileToRoom(roomId: string, fileId: string) {
