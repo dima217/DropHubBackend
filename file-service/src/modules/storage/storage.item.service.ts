@@ -355,7 +355,6 @@ export class StorageItemService implements IStorageItemService {
       );
     }
 
-    // Проверяем, нет ли уже элемента с таким именем в той же папке
     const existingItem = await this.itemModel.findOne({
       parentId: item.parentId,
       name: newName.trim(),
@@ -395,7 +394,6 @@ export class StorageItemService implements IStorageItemService {
       throw new BadRequestException("Cannot copy item to another storage.");
     }
 
-    // Проверяем target parent
     if (targetParentId !== null) {
       const targetParent = await this.itemModel.findById(targetParentId);
       if (!targetParent) {

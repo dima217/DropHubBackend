@@ -3,28 +3,33 @@ import {
   ForbiddenException,
   Injectable,
   UnauthorizedException,
+  Inject,
+  forwardRef,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { UserStorageDocument } from "./schemas/storage.schema";
 import { Model } from "mongoose";
-import { StorageItemService } from "./storage.item.service";
-import {
-  AccessRole,
-  ResourceType,
-} from "../permission-client/permission-client.service";
-import { PermissionClientService } from "../permission-client/permission-client.service";
-import { StorageItem } from "./schemas/storage.item.schema";
-import { TokenClientService } from "../token-client/token-client.service";
-import { IStorageService } from "./interfaces/storage-service.interface";
-import type { IStorageItemService } from "./interfaces";
-import { STORAGE_ITEM_SERVICE_TOKEN } from "./interfaces";
-import { Inject, forwardRef } from "@nestjs/common";
-import type { IFileService } from "../file/interfaces";
-import { FILE_SERVICE_TOKEN } from "../file/interfaces";
+
+import { UserStorageDocument } from "../../schemas/storage.schema";
+import { StorageItem } from "../../schemas/storage.item.schema";
+
+import { TokenClientService } from "../../../token-client/token-client.service";
+import { PermissionClientService } from "../../../permission-client/permission-client.service";
+import { StorageItemQueryService } from "../storage-item/storage-item.query.service";
+import { StorageItemCommandService } from "../storage-item/storage-item.command.service";
+import { StorageItemTrashService } from "../storage-item/storage-item.trash.service";
+import { StorageItemCopyService } from "../storage-item/storage-item.copy.service";
+import { StorageItemTreeService } from "../storage-item/storage-item.tree.service";
+
+import type { IStorageService } from "../../interfaces/storage-service.interface";
+
+import type { IFileService } from "../../../file/interfaces";
+import { FILE_SERVICE_TOKEN } from "../../../file/interfaces";
+
 import {
   StorageItemMapper,
   type EnrichedStorageItemDto,
-} from "./mappers/storage-item.mapper";
+} from "../../mappers/storage-item.mapper";
 
 interface GetStorageItemsParams {
   storageId: string;
@@ -64,13 +69,21 @@ export class StorageService implements IStorageService {
   constructor(
     @InjectModel("UserStorage")
     private readonly storageModel: Model<UserStorageDocument>,
+
     private readonly permissionClient: PermissionClientService,
-    @Inject(STORAGE_ITEM_SERVICE_TOKEN)
-    private readonly storageItemService: IStorageItemService,
+
+    private readonly itemQuery: StorageItemQueryService,
+    private readonly itemCommand: StorageItemCommandService,
+    private readonly itemTrash: StorageItemTrashService,
+    private readonly itemCopy: StorageItemCopyService,
+    private readonly itemTree: StorageItemTreeService,
+
     private readonly tokenService: TokenClientService,
+
     @Inject(forwardRef(() => FILE_SERVICE_TOKEN))
     private readonly fileService: IFileService
   ) {}
+
 
   async createStorage(userId: number) {
     const storage = await this.storageModel.create({
@@ -95,7 +108,7 @@ export class StorageService implements IStorageService {
       throw new BadRequestException("File items must have a fileId.");
     }
 
-    const item = await this.storageItemService.createItem(
+    const item = await this.itemCommand.createItem(
       name,
       isDirectory,
       parentId,
@@ -143,37 +156,10 @@ export class StorageService implements IStorageService {
     return [];
   }
 
-  async getStorageItemByToken(token: string): Promise<StorageItem> {
-    if (!token) {
-      throw new UnauthorizedException("Token is required.");
-    }
-
-    const payload = await this.tokenService.validateToken(token);
-
-    if (payload.resourceType !== "storage") {
-      throw new ForbiddenException(
-        "Token is not valid for accessing storage items."
-      );
-    }
-
-    if (payload.role !== "R" && payload.role !== "RW") {
-      throw new ForbiddenException("Token does not grant read access.");
-    }
-
-    const itemId = payload.resourceId;
-    const item = await this.storageItemService.getItemById(itemId);
-
-    const responseItem: ItemWithChildren = { ...item };
-
-    if (item.isDirectory) {
-      const children = await this.storageItemService.getItemsByParent(
-        item._id.toString()
-      );
-
-      responseItem.children = children;
-    }
-
-    return responseItem;
+  // Реализация временно отсутствует в рамках перехода на новые сервисы.
+  // На стороне main-app этот метод сейчас не используется.
+  async getStorageItemByToken(token: string): Promise<ItemWithChildren> {
+    throw new BadRequestException("getStorageItemByToken is not implemented yet.");
   }
 
   private async enrichItemsWithMetadata(
@@ -182,7 +168,7 @@ export class StorageService implements IStorageService {
     const enrichedItems = await Promise.all(
       items.map(async (item): Promise<EnrichedStorageItemDto> => {
         if (item.isDirectory) {
-          const childrenCount = await this.storageItemService.getChildrenCount(
+          const childrenCount = await this.itemTree.getChildrenCount(
             item._id.toString()
           );
           return StorageItemMapper.toDirectoryDto(item, childrenCount);
@@ -211,8 +197,7 @@ export class StorageService implements IStorageService {
   ): Promise<EnrichedStorageItemDto[]> {
     // Permission check is performed in main-app before calling this service
 
-    const items =
-      await this.storageItemService.getAllItemsByStorageId(storageId);
+    const items = await this.itemTree.getAllItemsByStorageId(storageId);
 
     return this.enrichItemsWithMetadata(items);
   }
@@ -220,7 +205,7 @@ export class StorageService implements IStorageService {
   async getStorageStructure(
     params: GetStorageItemsParams
   ): Promise<EnrichedStorageItemDto[]> {
-    const items = await this.storageItemService.getItemsByParent(
+    const items = await this.itemQuery.getItemsByParent(
       params.parentId,
       params.storageId
     );
@@ -229,7 +214,10 @@ export class StorageService implements IStorageService {
   }
 
   async deleteStorageItem(params: DeleteStorageItemParams) {
-    const item = await this.storageItemService.getItemById(params.itemId);
+    const item = await this.itemQuery.getItemById(params.itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
 
     if (item.storageId !== params.storageId) {
       throw new ForbiddenException(
@@ -237,13 +225,16 @@ export class StorageService implements IStorageService {
       );
     }
 
-    await this.storageItemService.softDeleteItem(params.itemId);
+    await this.itemTrash.softDelete(params.itemId);
 
     return { success: true, itemId: params.itemId };
   }
 
   async restoreStorageItem(params: DeleteStorageItemParams) {
-    const item = await this.storageItemService.getItemById(params.itemId);
+    const item = await this.itemQuery.getItemById(params.itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
 
     if (item.storageId !== params.storageId) {
       throw new ForbiddenException(
@@ -251,16 +242,16 @@ export class StorageService implements IStorageService {
       );
     }
 
-    await this.storageItemService.restoreItem(
-      params.itemId,
-      params.newParentId
-    );
+    await this.itemTrash.restore(params.itemId, params.newParentId);
 
     return { success: true, itemId: params.itemId };
   }
 
   async permanentDeleteStorageItem(params: DeleteStorageItemParams) {
-    const item = await this.storageItemService.getItemById(params.itemId);
+    const item = await this.itemQuery.getItemById(params.itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
 
     if (item.storageId !== params.storageId) {
       throw new ForbiddenException(
@@ -268,13 +259,13 @@ export class StorageService implements IStorageService {
       );
     }
 
-    await this.storageItemService.deleteItem(params.itemId);
+    await this.itemTrash.deletePermanent(params.itemId);
 
     return { success: true, itemId: params.itemId };
   }
 
   async getTrashItems(storageId: string) {
-    const items = await this.storageItemService.getTrashItems(storageId);
+    const items = await this.itemQuery.getTrashItems(storageId);
     return items.map((item) => StorageItemMapper.toBaseDto(item));
   }
 
@@ -285,7 +276,10 @@ export class StorageService implements IStorageService {
   ) {
     // Permission check is performed in main-app before calling this service
 
-    const item = await this.storageItemService.getItemById(itemId);
+    const item = await this.itemQuery.getItemById(itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
 
     if (item.storageId !== storageId) {
       throw new ForbiddenException(
@@ -293,15 +287,15 @@ export class StorageService implements IStorageService {
       );
     }
 
-    const updatedItem = await this.storageItemService.updateItemTags(
-      itemId,
-      tags
-    );
+    const updatedItem = await this.itemCommand.updateTags(itemId, tags);
     return StorageItemMapper.toBaseDto(updatedItem);
   }
 
   async moveStorageItem(params: MoveStorageItemParams) {
-    const item = await this.storageItemService.getItemById(params.itemId);
+    const item = await this.itemQuery.getItemById(params.itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
 
     if (item.storageId !== params.storageId) {
       throw new ForbiddenException(
@@ -309,11 +303,8 @@ export class StorageService implements IStorageService {
       );
     }
 
-    const updatedItem = await this.storageItemService.moveItem(
-      params.itemId,
-      params.newParentId
-    );
-    return StorageItemMapper.toBaseDto(updatedItem);
+    const updated = await this.itemTree.moveItem(params.itemId, params.newParentId);
+    return StorageItemMapper.toBaseDto(updated);
   }
 
   async searchStorageItems(params: {
@@ -326,7 +317,7 @@ export class StorageService implements IStorageService {
   }) {
     // Permission check is performed in main-app before calling this service
 
-    const items = await this.storageItemService.searchItems(params);
+    const items = await this.itemQuery.searchItems(params);
     return items.map((item) => StorageItemMapper.toBaseDto(item));
   }
 
@@ -336,7 +327,10 @@ export class StorageService implements IStorageService {
     newName: string;
     userId: number;
   }) {
-    const item = await this.storageItemService.getItemById(params.itemId);
+    const item = await this.itemQuery.getItemById(params.itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
 
     if (item.storageId !== params.storageId) {
       throw new ForbiddenException(
@@ -344,11 +338,8 @@ export class StorageService implements IStorageService {
       );
     }
 
-    const updatedItem = await this.storageItemService.renameItem(
-      params.itemId,
-      params.newName
-    );
-    return StorageItemMapper.toBaseDto(updatedItem);
+    const updatedItem = await this.itemCommand.rename(params.itemId, params.newName);
+    return StorageItemMapper.toBaseDto(updatedItem as any);
   }
 
   async copyStorageItem(params: {
@@ -357,7 +348,10 @@ export class StorageService implements IStorageService {
     targetParentId: string | null;
     userId: number;
   }) {
-    const item = await this.storageItemService.getItemById(params.itemId);
+    const item = await this.itemQuery.getItemById(params.itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
 
     if (item.storageId !== params.storageId) {
       throw new ForbiddenException(
@@ -365,7 +359,7 @@ export class StorageService implements IStorageService {
       );
     }
 
-    const copiedItem = await this.storageItemService.copyItem(
+    const copiedItem = await this.itemCopy.copyItem(
       params.itemId,
       params.targetParentId,
       params.userId.toString(),
