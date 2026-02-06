@@ -24,7 +24,7 @@ export interface IStorageService {
   getStoragesByIds(storageIds: string[]): Promise<
     Array<{
       id: string;
-      items: any[];
+      tags: string[];
       createdAt: string;
       maxBytes: number;
     }>

@@ -144,7 +144,7 @@ export class StorageService implements IStorageService {
       .exec();
     return storages.map((storage) => ({
       id: storage._id.toString(),
-      items: [],
+      tags: storage.tags || [],
       createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
       maxBytes: storage.maxBytes || 1024,
     }));
@@ -288,6 +288,7 @@ export class StorageService implements IStorageService {
     }
 
     const updatedItem = await this.itemCommand.updateTags(itemId, tags);
+    await this.storageModel.updateOne({ _id: storageId }, { $set: { tags } });
     return StorageItemMapper.toBaseDto(updatedItem);
   }
 

@@ -11,6 +11,9 @@ export class UserStorage {
 
   @Prop({ type: Number, default: 1024 })
   maxBytes: number;
+
+  @Prop({ type: [String], default: [] })
+  tags: string[];
 }
 
 export const UserStorageSchema = SchemaFactory.createForClass(UserStorage);

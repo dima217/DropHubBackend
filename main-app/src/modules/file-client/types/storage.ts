@@ -17,7 +17,7 @@ export interface StorageItemWithChildrenDto extends StorageItemDto {
 
 export interface UserStorageDto {
   id: string;
-  items: StorageItemDto[];
+  tags?: string[];
   createdAt: string;
   maxBytes: number;
   userRole?: string;
