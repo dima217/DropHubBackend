@@ -288,7 +288,14 @@ export class StorageService implements IStorageService {
     }
 
     const updatedItem = await this.itemCommand.updateTags(itemId, tags);
-    await this.storageModel.updateOne({ _id: storageId }, { $set: { tags } });
+    await this.storageModel.updateOne(
+      { _id: storageId },
+      {
+        $addToSet: {
+          tags: { $each: tags },
+        },
+      }
+    );
     return StorageItemMapper.toBaseDto(updatedItem);
   }
 
