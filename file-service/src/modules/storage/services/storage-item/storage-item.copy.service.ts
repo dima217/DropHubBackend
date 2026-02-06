@@ -1,15 +1,22 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from "@nestjs/common";
 import { Types } from "mongoose";
 import { StorageItemRepository } from "./storage-item.repository";
 import { StorageItem } from "../../schemas/storage.item.schema";
+import { FILE_SERVICE_TOKEN, type IFileService } from "@/modules/file/interfaces";
 
 @Injectable()
 export class StorageItemCopyService {
-  constructor(private readonly repo: StorageItemRepository) {}
+  constructor(
+    private readonly repo: StorageItemRepository,   
+    @Inject(forwardRef(() => FILE_SERVICE_TOKEN))
+    private readonly fileService: IFileService
+  ) {}
 
   async copyItem(
     itemId: string,
@@ -59,14 +66,23 @@ export class StorageItemCopyService {
       true
     );
 
+    let newFileId: Types.ObjectId | undefined = undefined;
+
+    if (!sourceItem.isDirectory && sourceItem.fileId) {
+        const { fileId } = await this.fileService.copyFile({
+        sourceFileId: sourceItem.fileId.toString(),
+        userId,
+      });
+
+      newFileId = new Types.ObjectId(fileId);
+    }
+
     const copiedRoot = await this.repo.create({
       userId,
       name: copyName,
       isDirectory: sourceItem.isDirectory,
       parentId: parentObjectId,
-      fileId: sourceItem.fileId
-        ? new Types.ObjectId(sourceItem.fileId)
-        : undefined,
+      fileId: newFileId,
       storageId,
       creatorId: sourceItem.creatorId || parseInt(userId, 10),
       tags: sourceItem.tags ? [...sourceItem.tags] : [],
@@ -103,12 +119,23 @@ export class StorageItemCopyService {
         false
       );
 
+      let newFileId: Types.ObjectId | undefined;
+
+      if (!child.isDirectory && child.fileId) {
+          const { fileId } = await this.fileService.copyFile({
+          sourceFileId: child.fileId.toString(),
+          userId,
+        });
+
+        newFileId = new Types.ObjectId(fileId);
+      }
+
       const copiedChild = await this.repo.create({
         userId,
         name: childName,
         isDirectory: child.isDirectory,
         parentId: targetParentId,
-        fileId: child.fileId ? new Types.ObjectId(child.fileId) : undefined,
+        fileId: newFileId,
         storageId,
         creatorId: child.creatorId || parseInt(userId, 10),
         tags: child.tags ? [...child.tags] : [],

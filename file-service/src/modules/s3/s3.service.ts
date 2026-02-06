@@ -10,6 +10,8 @@ import {
   DeleteObjectCommandInput,
   DeleteObjectCommand,
   HeadObjectCommand,
+  CopyObjectCommand,
+  CopyObjectCommandInput,
 } from "@aws-sdk/client-s3";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
 import https from "https";
@@ -71,6 +73,10 @@ export class S3Service implements OnModuleInit {
   async upload(params: PutObjectCommandInput) {
     return this.client.send(new PutObjectCommand(params));
   }
+
+  async copy(params: CopyObjectCommandInput) {
+    return this.client.send(new CopyObjectCommand(params));
+  }  
 
   async get(params: GetObjectCommandInput) {
     return this.client.send(new GetObjectCommand(params));

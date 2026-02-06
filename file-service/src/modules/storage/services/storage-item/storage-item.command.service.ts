@@ -20,6 +20,30 @@ export class StorageItemCommandService {
     storageId: string,
     creatorId?: number
   ): Promise<StorageItem> {
+    if (parentId !== null) {
+      const parent = await this.repo.findById(parentId);
+
+      if (!parent) {
+        throw new NotFoundException("Parent folder not found.");
+      }
+
+      if (parent.deletedAt) {
+        throw new BadRequestException(
+          "Cannot create item inside deleted folder."
+        );
+      }
+
+      if (!parent.isDirectory) {
+        throw new BadRequestException("Parent item must be a directory.");
+      }
+
+      if (parent.storageId !== storageId) {
+        throw new BadRequestException(
+          "Parent folder belongs to another storage."
+        );
+      }
+    }
+
     const doc = await this.repo.create({
       userId,
       name,
@@ -41,7 +65,9 @@ export class StorageItemCommandService {
     const item = await this.repo.findById(itemId);
     if (!item) throw new NotFoundException("Item not found.");
     if (item.deletedAt) {
-      throw new BadRequestException("Cannot rename deleted item. Restore it first.");
+      throw new BadRequestException(
+        "Cannot rename deleted item. Restore it first."
+      );
     }
 
     const existingItem = await this.repo.findOne({

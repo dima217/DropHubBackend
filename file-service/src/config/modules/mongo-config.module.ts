@@ -14,34 +14,32 @@ import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose';
         const mongoUsername = config.get<string>('MONGO_USERNAME');
         const mongoPassword = config.get<string>('MONGO_PASSWORD');
         const mongoAuthSource = config.get<string>('MONGO_AUTH_SOURCE');
-
+        const mongoReplicaSet = config.get<string>('MONGO_REPLICA_SET');
         const mongoUrl = config.get<string>('MONGO_URL');
-        
+
         if (mongoUrl) {
-          return {
-            uri: mongoUrl,
-          };
+          return { uri: mongoUrl };
         }
 
-        let uri = 'mongodb://';
-        
+        let credentials = '';
         if (mongoUsername && mongoPassword) {
-          uri += `${encodeURIComponent(mongoUsername)}:${encodeURIComponent(mongoPassword)}@`;
-        }
-        
-        uri += `${mongoHost}:${mongoPort}/${mongoDatabase}`;
-        
-        if (mongoAuthSource) {
-          uri += `?authSource=${mongoAuthSource}`;
+          credentials = `${encodeURIComponent(mongoUsername)}:${encodeURIComponent(mongoPassword)}@`;
         }
 
-        return {
-          uri,
-        };
+        const query: Record<string, string> = {};
+        if (mongoAuthSource) query['authSource'] = mongoAuthSource;
+        if (mongoReplicaSet) query['replicaSet'] = mongoReplicaSet;
+
+        const queryString = Object.keys(query)
+          .map(key => `${key}=${encodeURIComponent(query[key])}`)
+          .join('&');
+
+          const uri = `mongodb://${credentials}${mongoHost}:${mongoPort}/${mongoDatabase}${queryString ? `?${queryString}` : ''}`;
+
+        return { uri };
       },
     }),
   ],
   exports: [MongooseModule],
 })
 export class MongoConfigModule {}
-

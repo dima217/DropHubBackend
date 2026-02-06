@@ -166,7 +166,7 @@ export class UploadService implements IUploadService {
           userId,
           name: uploadSession.originalName,
           isDirectory: false,
-          parentId: null,
+          parentId: params.parentId ?? null,
           fileId: fileMeta._id.toString(),
         });
       }

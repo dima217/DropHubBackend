@@ -37,6 +37,10 @@ export type RoomWithFiles = {
 
 export interface IFileService {
   createFileMeta(dto: CreateFileMetaDto): Promise<FileDocument>;
+  copyFile(params: {
+    sourceFileId: string;
+    userId: string;
+  }): Promise<{ fileId: string }>;
   updateFile(dto: UpdateFileDto): Promise<{ success: boolean; roomId: string }>;
   invalidateRoomCache(roomId: string): Promise<void>;
   deleteFiles(dto: DeleteFileDto): Promise<(FileDocument | null)[]>;
@@ -64,16 +68,4 @@ export interface IFileService {
       roomId: string;
     }>
   >;
-  archiveRoom(params: {
-    roomId: string;
-    storageId: string;
-    parentId: string | null;
-    userId: number;
-    fileIds?: string[];
-  }): Promise<{
-    success: boolean;
-    roomId: string;
-    folderId: string;
-    archivedFilesCount: number;
-  }>;
 }

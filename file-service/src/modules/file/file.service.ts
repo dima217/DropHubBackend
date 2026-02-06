@@ -146,6 +146,66 @@ export class FileService implements IFileService {
     };
   }
 
+  async copyFile(params: {
+    sourceFileId: string;
+    userId: string;
+  }): Promise<{ fileId: string }> {
+    const { sourceFileId, userId } = params;
+  
+    const source = await this.fileModel.findById(sourceFileId).lean();
+    if (!source) {
+      throw new NotFoundException("Source file not found");
+    }
+  
+    const newKey = `copy-${Date.now()}-${source.key}`;
+    const copySource = `${this.bucket}/${encodeURIComponent(source.key)}`;
+  
+    await this.s3Service.copy({
+      Bucket: this.bucket,
+      CopySource: copySource,
+      Key: newKey,
+    });
+  
+    const session = await this.fileModel.startSession();
+  
+    try {
+      session.startTransaction();
+  
+      const newFile = await this.fileModel.create(
+        [
+          {
+            originalName: source.originalName,
+            storedName: `${source.originalName}-${Date.now()}`,
+            key: newKey,
+            size: source.size,
+            mimeType: source.mimeType,
+            uploadTime: new Date(),
+            downloadCount: 0,
+            uploadedParts: source.uploadedParts,
+            uploadSession: {
+              status: FileUploadStatus.COMPLETE,
+            },
+            creatorId: source.creatorId ?? parseInt(userId, 10),
+            expiresAt: source.expiresAt ?? null,
+          },
+        ],
+        { session }
+      );
+  
+      await session.commitTransaction();
+      return { fileId: newFile[0]._id.toString() };
+    } catch (err) {
+      await this.s3Service.delete({
+        Bucket: this.bucket,
+        Key: newKey,
+      });
+  
+      throw err;
+    } finally {
+      await session.endSession();
+    }
+  }
+  
   async getFilesByRoomID(params: AuthenticatedGettingFilesByRoomParams) {
     if (!params.roomId) {
       throw new BadRequestException("No roomId provided");
@@ -272,7 +332,6 @@ export class FileService implements IFileService {
         console.error(`Cache cleanup failed for file ${fileId}`, err);
       }
     }
-
     await this.fileModel.deleteMany({ _id: { $in: fileIds } });
   }
 
@@ -369,90 +428,5 @@ export class FileService implements IFileService {
     const paginatedFiles = allFiles.slice(offset, offset + limit);
 
     return paginatedFiles;
-  }
-
-  async archiveRoom(params: {
-    roomId: string;
-    storageId: string;
-    parentId: string | null;
-    userId: number;
-    fileIds?: string[];
-  }) {
-    const { roomId, storageId, parentId, userId, fileIds } = params;
-
-    const room = await this.roomModel
-      .findById(roomId)
-      .populate<{ files: FileDocument[] }>({
-        path: "files",
-        select: "-__v",
-        options: { lean: true },
-      })
-      .exec();
-
-    if (!room) {
-      throw new NotFoundException("Room not found.");
-    }
-
-    if (room.archived) {
-      throw new BadRequestException("Room is already archived.");
-    }
-
-    let filesToArchive = room.files || [];
-    if (fileIds && fileIds.length > 0) {
-      filesToArchive = filesToArchive.filter((file) =>
-        fileIds.includes(String(file._id))
-      );
-    }
-
-    filesToArchive = filesToArchive.filter(
-      (file) =>
-        file.uploadSession?.status === FileUploadStatus.COMPLETE &&
-        (!file.expiresAt || file.expiresAt > new Date())
-    );
-
-    if (filesToArchive.length === 0) {
-      throw new BadRequestException("No valid files to archive.");
-    }
-    const roomFolderName = `Room ${roomId.substring(0, 8)}`;
-
-    const folderItem = await this.storageService.createItemInStorage({
-      storageId,
-      userId,
-      name: roomFolderName,
-      isDirectory: true,
-      parentId,
-      fileId: null,
-    });
-
-    const folderId = String(folderItem._id);
-
-    const archivedItems = await Promise.all(
-      filesToArchive.map((file) =>
-        this.storageService.createItemInStorage({
-          storageId,
-          userId,
-          name: file.originalName,
-          isDirectory: false,
-          parentId: folderId,
-          fileId: String(file._id),
-        })
-      )
-    );
-
-    await this.roomModel.findByIdAndUpdate(roomId, {
-      $set: {
-        archived: true,
-        archivedAt: new Date(),
-      },
-    });
-
-    await this.invalidateRoomCache(roomId);
-
-    return {
-      success: true,
-      roomId,
-      folderId,
-      archivedFilesCount: archivedItems.length,
-    };
   }
 }
