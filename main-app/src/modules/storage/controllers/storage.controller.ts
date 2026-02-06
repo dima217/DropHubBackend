@@ -38,6 +38,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
+import { RemoveStorageTagsDto } from '@application/user/dto/remove-storage.tags.dto';
 
 @ApiTags('Storage')
 @ApiExtraModels(StorageItemResponseDto, StorageResponseDto, DeleteItemResponseDto)
@@ -394,6 +395,18 @@ export class UserStorageController {
     };
 
     return await this.storageClient.permanentDeleteStorageItem(params);
+  }
+
+  @Post('remove-storage-tags')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  async removeStorageTags(@Body() body: RemoveStorageTagsDto) {
+    return await this.storageClient.removeStorageTags(body.storageId, body.tags);
   }
 
   @UseGuards(PermissionGuard)

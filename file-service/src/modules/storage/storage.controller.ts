@@ -78,6 +78,13 @@ export class StorageController {
     return this.storageService.updateStorageItemTags(data.storageId, data.itemId, data.tags);
   }
 
+  @MessagePattern('storage.removeStorageTags')
+  async removeStorageTags(
+    @Payload() data: { storageId: string; tags: string[] },
+  ) {
+    return this.storageService.removeStorageTags(data.storageId, data.tags);
+  }
+
   @MessagePattern('storage.moveItem')
   async moveItem(
     @Payload() data: { storageId: string; itemId: string; newParentId: string | null; userId: number },

@@ -61,6 +61,10 @@ export interface IStorageService {
     itemId: string,
     tags: string[],
   ): Promise<any>;
+  removeStorageTags(
+    storageId: string,
+    tags: string[],
+  ): Promise<any>;
   moveStorageItem(params: {
     storageId: string;
     itemId: string;

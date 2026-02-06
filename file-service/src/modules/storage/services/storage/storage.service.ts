@@ -299,6 +299,23 @@ export class StorageService implements IStorageService {
     return StorageItemMapper.toBaseDto(updatedItem);
   }
 
+
+  async removeStorageTags(
+    storageId: string,
+    tags: string[]
+  ) {
+    await this.storageModel.updateOne(
+      { _id: storageId },
+      {
+        $pull: {
+          tags: { $in: tags },
+        },
+      }
+    );
+    await this.itemCommand.removeTags(storageId, tags);
+    return { success: true };
+  }
+
   async moveStorageItem(params: MoveStorageItemParams) {
     const item = await this.itemQuery.getItemById(params.itemId);
     if (!item) {

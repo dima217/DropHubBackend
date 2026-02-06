@@ -43,6 +43,17 @@ export class StorageItemRepository {
     return this.model.deleteMany(filter);
   }
 
+  removeTags(storageId: string, tags: string[]) {
+    return this.model.updateMany(
+      { storageId },
+      {
+        $pull: {
+          tags: { $in: tags },
+        },
+      }
+    );
+  }
+
   search(params: {
     storageIds: string[];
     query?: string;

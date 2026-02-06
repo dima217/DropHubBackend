@@ -135,6 +135,13 @@ export class StorageClientService {
     );
   }
 
+  async removeStorageTags(storageId: string, tags: string[]): Promise<void> {
+    return this.send<void, { storageId: string; tags: string[] }>('storage.removeStorageTags', {
+      storageId,
+      tags,
+    });
+  }
+
   async moveStorageItem(data: MoveStorageItemPayload): Promise<StorageItemDto> {
     return this.send<StorageItemDto, MoveStorageItemPayload>('storage.moveItem', data);
   }

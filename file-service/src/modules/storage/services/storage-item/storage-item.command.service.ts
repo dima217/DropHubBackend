@@ -94,4 +94,8 @@ export class StorageItemCommandService {
     if (!item) throw new NotFoundException("Item not found.");
     return item;
   }
+
+  async removeTags(storageId: string, tags: string[]) {
+    return this.repo.removeTags(storageId, tags);
+  }
 }
