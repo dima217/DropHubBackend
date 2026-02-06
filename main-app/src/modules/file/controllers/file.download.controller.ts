@@ -12,6 +12,7 @@ import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { DownloadRoomFileDto } from '../dto/download/download-file-room.dto';
+import { DownloadStorageFileDto } from '../dto/download/download-file-storage.dto';
 
 @ApiTags('File Download')
 @Controller('/download')
@@ -128,6 +129,31 @@ export class FileDownloadController {
   @ApiResponse({ status: 404, description: 'File not found in the room' })
   async downloadFileByURLPrivateRoom(
     @Body() body: DownloadRoomFileDto,
+    @Req() req: RequestWithUser,
+  ) {
+    const urls = await this.fileClient.getDownloadLinks(body.fileIds, req.user.id);
+    return urls;
+  }
+
+  @Post('/url-private/storage')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  @ApiOperation({
+    summary: 'Get private download URL for a storage file',
+    description:
+      'Generates a presigned download URL for a file located in a storage. Requires READ, WRITE, or ADMIN permission on the storage specified by `storageId`.',
+  })
+  @ApiBody({ type: DownloadStorageFileDto })
+  @ApiResponse({ status: 200, description: 'Download URL generated successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions on the storage' })
+  @ApiResponse({ status: 404, description: 'File not found in the storage' })
+  async downloadFileByURLPrivateStorage(
+    @Body() body: DownloadStorageFileDto,
     @Req() req: RequestWithUser,
   ) {
     const urls = await this.fileClient.getDownloadLinks(body.fileIds, req.user.id);

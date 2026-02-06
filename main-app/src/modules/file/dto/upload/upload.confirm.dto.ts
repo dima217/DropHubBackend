@@ -27,5 +27,9 @@ export class UploadConfirmDto {
   @IsString()
   storageId?: string;
 
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+
   userId: number;
 }
