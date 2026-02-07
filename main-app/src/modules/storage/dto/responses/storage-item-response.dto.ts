@@ -111,8 +111,13 @@ export class StorageResponseDto {
   @ApiProperty({ description: 'Storage ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   id: string;
 
-  @ApiProperty({ description: 'Storage items', type: [StorageItemResponseDto], isArray: true })
-  items: StorageItemResponseDto[];
+  @ApiProperty({
+    description: 'Tags associated with the storage',
+    example: ['work', 'important'],
+    type: [String],
+    required: false,
+  })
+  tags?: string[];
 
   @ApiProperty({ description: 'Creation timestamp', example: '2026-01-25T10:20:00.000Z' })
   createdAt: string;
@@ -128,4 +133,3 @@ export class DeleteItemResponseDto {
   @ApiProperty({ description: 'Deleted item ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   itemId: string;
 }
-

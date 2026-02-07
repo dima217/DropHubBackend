@@ -1,8 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { UniversalPermissionService } from '../services/permission.service';
 import { GrantPermissionDto } from '../dto/grant-permission.dto';
 import { RevokePermissionDto } from '../dto/revoke-permission.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
+import type { RequestWithUser } from 'src/types/express';
 
 @ApiTags('Permissions')
 @Controller('/permission')
@@ -37,8 +39,15 @@ export class PermissionController {
     status: 403,
     description: 'Forbidden - acting user lacks permission to grant permissions',
   })
-  async grantPermission(@Body() granPermissionDto: GrantPermissionDto) {
-    return this.permissionService.grantPermission(granPermissionDto);
+  @UseGuards(JwtAuthGuard)
+  async grantPermission(
+    @Req() req: RequestWithUser,
+    @Body() granPermissionDto: GrantPermissionDto,
+  ) {
+    return this.permissionService.grantPermission({
+      ...granPermissionDto,
+      actingUserId: req.user.id,
+    });
   }
 
   @Post('/revoke')

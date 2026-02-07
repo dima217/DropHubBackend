@@ -18,6 +18,7 @@ export enum ResourceType {
   ROOM = 'room',
   STORAGE = 'storage',
   FILE = 'file',
+  SHARED = 'shared',
   INVITE = 'invite',
 }
 

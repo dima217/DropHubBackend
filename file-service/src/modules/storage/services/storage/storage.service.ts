@@ -6,6 +6,7 @@ import {
   Inject,
   forwardRef,
   NotFoundException,
+  Logger,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
@@ -31,7 +32,7 @@ import {
   type EnrichedStorageItemDto,
 } from "../../mappers/storage-item.mapper";
 
-interface GetStorageItemsParams {
+export interface GetStorageItemsParams {
   storageId: string;
   parentId: string | null;
   userId: number;
@@ -83,6 +84,8 @@ export class StorageService implements IStorageService {
     @Inject(forwardRef(() => FILE_SERVICE_TOKEN))
     private readonly fileService: IFileService
   ) {}
+  
+  private readonly logger = new Logger(StorageService.name);
 
 
   async createStorage(userId: number) {
@@ -210,6 +213,34 @@ export class StorageService implements IStorageService {
       params.storageId
     );
 
+    return this.enrichItemsWithMetadata(items);
+  }
+
+  async getStorageStructureWithAccessCheck(
+    params: GetStorageItemsParams,
+    resourceId: string
+  ): Promise<EnrichedStorageItemDto[]> {
+    const { parentId } = params;
+  
+    if (!parentId) {
+      throw new ForbiddenException('Access denied');
+    }
+  
+    const allowed = await this.itemQuery.isDescendantOrSelf(
+      parentId,
+      resourceId
+    );
+  
+    if (!allowed) {
+      this.logger.error('Access denied', { parentId, resourceId });
+      throw new ForbiddenException('Access denied');
+    }
+  
+    return this.getStorageStructure(params);
+  }
+  
+  async getSharedItems(itemIds: string[]): Promise<EnrichedStorageItemDto[]> {
+    const items = await this.itemQuery.getItemsByIds(itemIds);
     return this.enrichItemsWithMetadata(items);
   }
 

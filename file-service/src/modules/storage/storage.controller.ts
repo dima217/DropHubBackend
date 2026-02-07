@@ -26,6 +26,13 @@ export class StorageController {
     return this.storageService.getStorageStructure(data);
   }
 
+  @MessagePattern('storage.getSharedStructure')
+  async getSharedStructure(
+    @Payload() data: { storageId: string; parentId: string | null; resourceId: string; userId: number },
+  ) {
+    return this.storageService.getStorageStructureWithAccessCheck({ storageId: data.storageId, parentId: data.parentId, userId: data.userId }, data.resourceId);
+  }
+
   @MessagePattern('storage.getFullStructure')
   async getFullStructure(@Payload() data: { storageId: string; userId: number }) {
     return this.storageService.getFullStorageStructure(data.storageId, data.userId);
@@ -118,6 +125,13 @@ export class StorageController {
     },
   ) {
     return this.storageService.renameStorageItem(data);
+  }
+
+  @MessagePattern('storage.getSharedItems')
+  async getSharedItems(
+    @Payload() data: { itemIds: string[] },
+  ) {
+    return this.storageService.getSharedItems(data.itemIds);
   }
 
   @MessagePattern('storage.copyItem')

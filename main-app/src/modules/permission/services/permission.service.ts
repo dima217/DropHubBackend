@@ -74,6 +74,28 @@ export class UniversalPermissionService {
     return this.permissionRepository.save(newPermission);
   }
 
+  async grantSharedPermission(params: GrantPermissionParams): Promise<Permission> {
+    const { targetUserId, resourceId, role } = params;
+
+    const existingPermission = await this.permissionRepository.findOne({
+      where: { user: { id: targetUserId }, resourceId, resourceType: ResourceType.SHARED },
+    });
+
+    if (existingPermission) {
+      existingPermission.role = role;
+      return this.permissionRepository.save(existingPermission);
+    }
+
+    const newPermission = this.permissionRepository.create({
+      user: { id: targetUserId },
+      resourceId,
+      resourceType: ResourceType.SHARED,
+      role,
+    });
+
+    return this.permissionRepository.save(newPermission);
+  }
+
   async revokePermission(params: RevokePermissionParams): Promise<void> {
     const { actingUserId, targetUserId, resourceId, resourceType } = params;
 
@@ -81,6 +103,20 @@ export class UniversalPermissionService {
 
     const permission = await this.permissionRepository.findOne({
       where: { user: { id: targetUserId }, resourceId, resourceType },
+    });
+
+    if (!permission) {
+      throw new NotFoundException('Permission not found for the target user.');
+    }
+
+    await this.permissionRepository.remove(permission);
+  }
+
+  async revokeSharedPermission(params: RevokePermissionParams): Promise<void> {
+    const { targetUserId, resourceId } = params;
+
+    const permission = await this.permissionRepository.findOne({
+      where: { user: { id: targetUserId }, resourceId, resourceType: ResourceType.SHARED },
     });
 
     if (!permission) {

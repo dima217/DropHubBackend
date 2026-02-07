@@ -41,6 +41,13 @@ export interface CopyStorageItemPayload {
   userId: number;
 }
 
+export interface GetSharedItemStructurePayload {
+  storageId: string;
+  parentId: string | null;
+  resourceId: string;
+  userId: number;
+}
+
 @Injectable()
 export class StorageClientService {
   constructor(@Inject('FILE_SERVICE') private readonly fileClient: ClientProxy) {}
@@ -60,8 +67,21 @@ export class StorageClientService {
     return this.send<StorageItemDto, CreateStorageItemPayload>('storage.createItem', data);
   }
 
+  async getItemsByIds(itemIds: string[]): Promise<StorageItemDto[]> {
+    return this.send<StorageItemDto[], { itemIds: string[] }>('storage.getSharedItems', {
+      itemIds,
+    });
+  }
+
   async getStorageStructure(data: GetStorageStructurePayload): Promise<StorageItemDto[]> {
     return this.send<StorageItemDto[], GetStorageStructurePayload>('storage.getStructure', data);
+  }
+
+  async getSharedItemStructure(data: GetSharedItemStructurePayload): Promise<StorageItemDto[]> {
+    return this.send<StorageItemDto[], GetSharedItemStructurePayload>(
+      'storage.getSharedStructure',
+      data,
+    );
   }
 
   async getFullStorageStructure(storageId: string, userId: number): Promise<StorageItemDto[]> {

@@ -46,6 +46,37 @@ export class StorageItemQueryService {
     });
   }
 
+  async getItemsByIds(itemIds: string[]): Promise<StorageItemLean[]> {
+    return this.repo.findLean({
+      _id: { $in: itemIds.map((id) => new Types.ObjectId(id)) },
+      deletedAt: null,
+    });
+  }
+
+  async isDescendantOrSelf(
+    itemId: string,
+    ancestorId: string
+  ): Promise<boolean> {
+    if (itemId === ancestorId) {
+      return true;
+    }
+  
+    let current = await this.getItemById(itemId);
+  
+    while (current?.parentId) {
+      if (current.parentId.toString() === ancestorId) {
+        return true;
+      }
+  
+      current = await this.getItemById(
+        current.parentId.toString()
+      );
+    }
+  
+    return false;
+  }
+  
+
   async searchItems(params: SearchParams): Promise<StorageItem[]> {
     const {
       storageIds,

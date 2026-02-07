@@ -20,7 +20,7 @@ services:
       - MONGO_REPLICA_SET=rs0
 
       # MinIO S3
-      - S3_ENDPOINT=http://10.154.31.195:9000
+      - S3_ENDPOINT=http://10.175.66.195:9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
       - S3_BUCKET=files

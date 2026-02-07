@@ -1,4 +1,6 @@
+import { EnrichedStorageItemDto } from '../mappers/storage-item.mapper';
 import { StorageItem } from '../schemas/storage.item.schema';
+import { GetStorageItemsParams } from '../services/storage/storage.service';
 
 export interface IStorageService {
   createStorage(userId: number): Promise<{
@@ -37,6 +39,7 @@ export interface IStorageService {
     parentId: string | null;
     userId: number;
   }): Promise<any[]>;
+  getStorageStructureWithAccessCheck(params: GetStorageItemsParams, resourceId: string): Promise<EnrichedStorageItemDto[]>;
   deleteStorageItem(params: {
     storageId: string;
     itemId: string;
@@ -61,6 +64,7 @@ export interface IStorageService {
     itemId: string,
     tags: string[],
   ): Promise<any>;
+  getSharedItems(itemIds: string[]): Promise<EnrichedStorageItemDto[]>;
   removeStorageTags(
     storageId: string,
     tags: string[],
