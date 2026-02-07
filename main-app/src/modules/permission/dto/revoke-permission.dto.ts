@@ -3,10 +3,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ResourceType } from '../entities/permission.entity';
 
 export class RevokePermissionDto {
-  @ApiProperty({ description: 'User ID who is revoking the permission', example: 1 })
-  @IsNumber()
-  actingUserId: number;
-
   @ApiProperty({ description: 'User ID whose permission will be revoked', example: 2 })
   @IsNumber()
   targetUserId: number;

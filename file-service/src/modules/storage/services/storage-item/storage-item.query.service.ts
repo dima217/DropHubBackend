@@ -75,7 +75,6 @@ export class StorageItemQueryService {
   
     return false;
   }
-  
 
   async searchItems(params: SearchParams): Promise<StorageItem[]> {
     const {

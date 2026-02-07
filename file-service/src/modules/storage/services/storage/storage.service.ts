@@ -87,7 +87,6 @@ export class StorageService implements IStorageService {
   
   private readonly logger = new Logger(StorageService.name);
 
-
   async createStorage(userId: number) {
     const storage = await this.storageModel.create({
       createdAt: Date.now(),

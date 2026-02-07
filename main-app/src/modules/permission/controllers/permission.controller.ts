@@ -71,8 +71,14 @@ export class PermissionController {
     description: 'Forbidden - acting user lacks permission to revoke permissions',
   })
   @ApiResponse({ status: 404, description: 'Permission not found' })
-  async revokePermission(@Body() revokePermissionDto: RevokePermissionDto) {
-    await this.permissionService.revokePermission(revokePermissionDto);
+  async revokePermission(
+    @Req() req: RequestWithUser,
+    @Body() revokePermissionDto: RevokePermissionDto,
+  ) {
+    await this.permissionService.revokePermission({
+      actingUserId: req.user.id,
+      ...revokePermissionDto,
+    });
     return { message: 'Permission revoked successfully.' };
   }
 }
