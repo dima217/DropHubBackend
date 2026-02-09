@@ -49,6 +49,27 @@ export class FavoritesController {
     return this.favoritesService.addFavoriteStorageItem(req.user.id, body.storageId, body.itemId);
   }
 
+  @ApiOperation({
+    summary: 'Add shared item to favorites',
+    description: 'Adds a shared item to the user favorites list.',
+  })
+  @ApiBody({ type: AddFavoriteStorageItemDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Item added to favorites successfully',
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Storage or item not found' })
+  @Post('shared-item')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.SHARED, [AccessRole.READ, AccessRole.WRITE], 'body', 'itemId')
+  async addSharedItemToFavorites(
+    @Req() req: RequestWithUser,
+    @Body() body: AddFavoriteStorageItemDto,
+  ) {
+    return this.favoritesService.addSharedItemToFavorites(req.user.id, body.itemId, body.storageId);
+  }
+
   @Delete('storage-item')
   @ApiOperation({
     summary: 'Remove storage item from favorites',
@@ -74,7 +95,34 @@ export class FavoritesController {
     return this.favoritesService.removeFavoriteStorageItem(req.user.id, body.itemId);
   }
 
-  @Get('storage-item')
+  @Delete('shared-item')
+  @ApiOperation({
+    summary: 'Remove shared item from favorites',
+    description: 'Removes a shared item from the user favorites list.',
+  })
+  @ApiBody({ type: RemoveFavoriteStorageItemDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Item removed from favorites successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Item removed from favorites' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Favorite item not found' })
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.SHARED, [AccessRole.READ, AccessRole.WRITE], 'body', 'itemId')
+  async removeSharedItemFromFavorites(
+    @Req() req: RequestWithUser,
+    @Body() body: RemoveFavoriteStorageItemDto,
+  ) {
+    return this.favoritesService.removeFavoriteStorageItem(req.user.id, body.itemId);
+  }
+
+  @Post()
   @ApiOperation({
     summary: 'Get favorite storage items',
     description: 'Retrieves all storage item IDs that are in the user favorites list.',

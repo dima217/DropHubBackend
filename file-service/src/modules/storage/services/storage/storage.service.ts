@@ -368,12 +368,15 @@ export class StorageService implements IStorageService {
     tags?: string[];
     creatorId?: number;
     limit?: number;
+    mimeType?: string;
     offset?: number;
   }) {
-    // Permission check is performed in main-app before calling this service
 
     const items = await this.itemQuery.searchItems(params);
-    return items.map((item) => StorageItemMapper.toBaseDto(item));
+    const enrichedItems = await this.enrichItemsWithMetadata(items);
+    return enrichedItems.filter(
+      item => item.isDirectory || item.fileMeta?.mimeType === params.mimeType
+    );
   }
 
   async renameStorageItem(params: {

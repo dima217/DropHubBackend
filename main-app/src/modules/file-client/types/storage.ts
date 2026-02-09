@@ -1,3 +1,5 @@
+import { FileMeta } from './file';
+
 export interface StorageItemDto {
   id: string;
   userId: string;
@@ -9,8 +11,11 @@ export interface StorageItemDto {
   creatorId?: number;
   tags?: string[];
   deletedAt?: string | null;
+  fileMeta?: FileMeta;
+  childrenCount?: number;
+  filesCount?: number;
+  foldersCount?: number;
 }
-
 export interface StorageItemWithChildrenDto extends StorageItemDto {
   children?: StorageItemDto[];
 }

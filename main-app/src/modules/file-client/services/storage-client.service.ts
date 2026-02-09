@@ -173,6 +173,7 @@ export class StorageClientService {
     creatorId?: number;
     limit?: number;
     offset?: number;
+    mimeType?: string;
   }): Promise<Array<StorageItemDto>> {
     return this.send<Array<StorageItemDto>, typeof payload>('storage.searchItems', payload);
   }

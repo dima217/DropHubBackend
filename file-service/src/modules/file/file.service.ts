@@ -394,10 +394,6 @@ export class FileService implements IFileService {
             continue;
           }
 
-          if (file.uploadSession?.status !== FileUploadStatus.COMPLETE) {
-            continue;
-          }
-
           if (
             query &&
             !file.originalName.toLowerCase().includes(query.toLowerCase())

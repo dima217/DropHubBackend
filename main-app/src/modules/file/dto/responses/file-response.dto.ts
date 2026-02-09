@@ -76,4 +76,3 @@ export class DeleteFileResponseDto {
   @ApiProperty({ description: 'Number of files updated/deleted', example: 3 })
   updated: number;
 }
-

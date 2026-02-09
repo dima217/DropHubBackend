@@ -14,7 +14,8 @@ export class SearchController {
   @Post()
   @ApiOperation({
     summary: 'Search resources',
-    description: 'Searches for rooms and storage items based on query, tags, MIME type, creator, and resource type. Supports pagination.',
+    description:
+      'Searches for rooms and storage items based on query, tags, MIME type, creator, and resource type. Supports pagination.',
   })
   @ApiBody({ type: SearchDto })
   @ApiResponse({

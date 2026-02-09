@@ -4,6 +4,7 @@ import { ResourceType } from '../../permission/entities/permission.entity';
 import { SearchDto, SearchResourceType } from '../dto/search.dto';
 import { FileClientService } from '../../file-client/services/file-client.service';
 import { StorageClientService } from '../../file-client/services/storage-client.service';
+import { FileMeta } from '../../file-client/types/file';
 
 @Injectable()
 export class SearchService {
@@ -32,6 +33,7 @@ export class SearchService {
         tags?: string[];
         resourceId: string;
         resourceType: 'storage';
+        fileMeta?: FileMeta;
       }>;
     } = {
       files: [],
@@ -98,6 +100,10 @@ export class SearchService {
           tags: item.tags ?? [],
           resourceId: item.storageId,
           resourceType: 'storage' as const,
+          childrenCount: item.childrenCount,
+          filesCount: item.filesCount,
+          foldersCount: item.foldersCount,
+          fileMeta: item.fileMeta,
         })) as typeof results.storageItems;
       }
     }

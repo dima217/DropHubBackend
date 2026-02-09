@@ -14,14 +14,12 @@ export class FavoritesService {
   ) {}
 
   async addFavoriteStorageItem(userId: number, storageId: string, itemId: string) {
-    // Проверяем, что у пользователя есть доступ к storage
     await this.permissionService.verifyUserAccess(userId, storageId, ResourceType.STORAGE, [
       AccessRole.ADMIN,
       AccessRole.READ,
       AccessRole.WRITE,
     ]);
 
-    // Проверяем, не добавлен ли уже item в избранное
     const existing = await this.favoriteStorageItemRepository.findOne({
       where: { userId, itemId },
     });
@@ -34,6 +32,24 @@ export class FavoritesService {
       userId,
       storageId,
       itemId,
+    });
+
+    return this.favoriteStorageItemRepository.save(favorite);
+  }
+
+  async addSharedItemToFavorites(userId: number, itemId: string, storageId: string) {
+    const existing = await this.favoriteStorageItemRepository.findOne({
+      where: { userId, itemId },
+    });
+
+    if (existing) {
+      throw new ConflictException('Shared item is already in favorites');
+    }
+
+    const favorite = this.favoriteStorageItemRepository.create({
+      userId,
+      itemId,
+      storageId,
     });
 
     return this.favoriteStorageItemRepository.save(favorite);

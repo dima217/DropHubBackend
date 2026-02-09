@@ -8,6 +8,8 @@ export interface FileMeta {
   expiresAt?: Date | null;
   storedName: string;
   creatorId?: number;
+  uploadTime: Date;
+  downloadCount: number;
 }
 
 export interface RoomWithFiles {

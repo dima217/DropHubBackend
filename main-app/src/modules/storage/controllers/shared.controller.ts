@@ -12,6 +12,7 @@ import { RequirePermission } from 'src/auth/common/decorators/permission.decorat
 import { RevokeSharedPermissionDto } from '@application/permission/dto/revoke-permission.dto';
 import { GetItemStructureDto } from '../dto/shared/get-item.structure.dto';
 import { StorageClientService } from '@application/file-client';
+import { GetSharedItemParticipantsDto } from '../dto/shared/get-shared.item.participants.dto';
 
 @Controller('shared')
 @ApiTags('Shared')
@@ -113,5 +114,19 @@ export class SharedController {
       resourceId: revokePermissionDto.resourceId,
       resourceType: ResourceType.SHARED,
     });
+  }
+
+  @Post('/get-item-participants')
+  @UseGuards(JwtAuthGuard)
+  @ApiBody({ type: GetSharedItemParticipantsDto })
+  @ApiOperation({
+    summary: 'Get shared item participants',
+    description: 'Get shared item participants',
+  })
+  async getSharedItemParticipants(
+    @Req() req: RequestWithUser,
+    @Body() getSharedItemParticipantsDto: GetSharedItemParticipantsDto,
+  ) {
+    return this.sharedService.getSharedItemParticipants(getSharedItemParticipantsDto.itemId);
   }
 }

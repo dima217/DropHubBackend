@@ -4,12 +4,14 @@ import { StorageItemResponseDto } from '../dto/responses/storage-item-response.d
 import { StorageClientService } from '../../file-client/services/storage-client.service';
 import { Injectable } from '@nestjs/common';
 import { StorageItemDto } from '@application/file-client/types/storage';
+import { UsersService } from '@application/user/services/user.service';
 
 @Injectable()
 export class SharedService {
   constructor(
     private readonly permissionService: UniversalPermissionService,
     private readonly storageClient: StorageClientService,
+    private readonly userService: UsersService,
   ) {}
 
   async getSharedItems(userId: number): Promise<StorageItemResponseDto[]> {
@@ -38,5 +40,13 @@ export class SharedService {
       resourceId,
       userId,
     });
+  }
+
+  async getSharedItemParticipants(itemId: string) {
+    return this.permissionService.getResourceParticipants(
+      itemId,
+      ResourceType.SHARED,
+      this.userService,
+    );
   }
 }

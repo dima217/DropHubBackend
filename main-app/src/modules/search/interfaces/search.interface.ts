@@ -14,5 +14,5 @@ export interface SearchStorageItemsPayload {
   creatorId?: number;
   limit?: number;
   offset?: number;
+  mimeType?: string;
 }
-
