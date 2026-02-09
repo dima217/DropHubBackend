@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { S3Service } from "../../../s3/s3.service";
 import { S3_BUCKET_TOKEN } from "../../../s3/s3.tokens";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -14,6 +14,7 @@ import { FILE_SERVICE_TOKEN } from "../../interfaces";
 import { UploadSessionRepository } from "../../repository/upload.session.repository";
 import { UploadConfirmDto } from "../../dto/upload/upload-confirm.dto";
 import { RpcException } from "@nestjs/microservices";
+import { StorageItemQueryService } from "@/modules/storage/services/storage-item/storage-item.query.service";
 
 @Injectable()
 export class UploadService implements IUploadService {
@@ -25,7 +26,8 @@ export class UploadService implements IUploadService {
     @Inject(FILE_SERVICE_TOKEN) private readonly fileService: IFileService,
     private readonly tokenService: TokenClientService,
     @Inject(S3_BUCKET_TOKEN) private readonly bucket: string,
-    private readonly uploadSessionRepository: UploadSessionRepository
+    private readonly uploadSessionRepository: UploadSessionRepository,
+    private readonly itemQuery: StorageItemQueryService
   ) {}
 
   private getMediaPrefix(mimeType: string): string {
@@ -120,7 +122,7 @@ export class UploadService implements IUploadService {
 
   async confirmUpload(params: UploadConfirmDto) {
     try {
-      const { uploadId, userId } = params;
+      const { uploadId, userId, resourceId } = params;
 
       const uploadSession =
         await this.uploadSessionRepository.findById(uploadId);
@@ -139,6 +141,17 @@ export class UploadService implements IUploadService {
           code: "FILE_NOT_UPLOADED",
           message: "File was not uploaded to S3",
         });
+      }
+
+      if (params.parentId && resourceId) {
+        const isAllowed = await this.itemQuery.isDescendantOrSelf(
+          params.parentId,
+          resourceId
+        );
+
+        if (!isAllowed) {
+          throw new ForbiddenException('Access denied');
+        }
       }
 
       const fileMeta = await this.fileService.createFileMeta({

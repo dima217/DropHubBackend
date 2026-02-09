@@ -134,7 +134,7 @@ export class FavoritesController {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
-        itemIds: {
+        items: {
           type: 'array',
           items: { type: 'string' },
           example: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'],
@@ -143,8 +143,8 @@ export class FavoritesController {
     },
   })
   async getFavoriteStorageItems(@Req() req: RequestWithUser) {
-    const itemIds = await this.favoritesService.getFavoriteStorageItems(req.user.id);
-    return { success: true, itemIds };
+    const items = await this.favoritesService.getFavoriteStorageItems(req.user.id);
+    return { success: true, items };
   }
 
   @Get('storage-item/:itemId')

@@ -42,6 +42,6 @@ import {
     StorageItemCopyService,
     StorageItemCommandService,
   ],
-  exports: [STORAGE_SERVICE_TOKEN, StorageService],
+  exports: [STORAGE_SERVICE_TOKEN, StorageService, StorageItemQueryService],
 })
 export class StorageModule {}

@@ -2,6 +2,7 @@ import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type { IStorageService } from './interfaces';
 import { STORAGE_SERVICE_TOKEN } from './interfaces';
+import type { CreateSharedItemParams } from './services/storage/storage.service';
 
 @Controller()
 export class StorageController {
@@ -31,6 +32,11 @@ export class StorageController {
     @Payload() data: { storageId: string; parentId: string | null; resourceId: string; userId: number },
   ) {
     return this.storageService.getStorageStructureWithAccessCheck({ storageId: data.storageId, parentId: data.parentId, userId: data.userId }, data.resourceId);
+  }
+
+  @MessagePattern('storage.createSharedItem')
+  async createSharedItem(@Payload() data: CreateSharedItemParams) {
+    return this.storageService.createSharedItem(data);
   }
 
   @MessagePattern('storage.getFullStructure')

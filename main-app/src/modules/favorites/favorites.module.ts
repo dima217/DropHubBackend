@@ -4,9 +4,10 @@ import { FavoritesService } from './services/favorites.service';
 import { FavoritesController } from './controllers/favorites.controller';
 import { FavoriteStorageItem } from './entities/favorite-storage.entity';
 import { PermissionModule } from '../permission/permission.module';
+import { FileClientModule } from '@application/file-client';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FavoriteStorageItem]), PermissionModule],
+  imports: [TypeOrmModule.forFeature([FavoriteStorageItem]), PermissionModule, FileClientModule],
   controllers: [FavoritesController],
   providers: [FavoritesService],
   exports: [FavoritesService],

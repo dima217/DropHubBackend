@@ -54,6 +54,12 @@ interface CreateItemParams {
   userId: number;
 }
 
+export interface CreateSharedItemParams
+  extends Omit<CreateItemParams, 'parentId'> {
+  resourceId: string;
+  parentId: string;
+}
+
 interface ItemWithChildren extends StorageItem {
   children?: StorageItem[];
 }
@@ -108,6 +114,36 @@ export class StorageService implements IStorageService {
 
     if (!isDirectory && !fileId) {
       throw new BadRequestException("File items must have a fileId.");
+    }
+
+    const item = await this.itemCommand.createItem(
+      name,
+      isDirectory,
+      parentId,
+      fileId,
+      userId.toString(),
+      storageId,
+      userId
+    );
+
+    return item;
+  }
+
+  async createSharedItem(params: CreateSharedItemParams) {
+    const { storageId, userId, name, isDirectory, parentId, fileId, resourceId } = params;
+
+
+    if (!isDirectory && !fileId && !resourceId) {
+      throw new BadRequestException("File items must have a fileId.");
+    }
+
+    const allowed = await this.itemQuery.isDescendantOrSelf(
+      parentId,
+      resourceId
+    );
+
+    if (!allowed) {
+      throw new ForbiddenException('Access denied');
     }
 
     const item = await this.itemCommand.createItem(

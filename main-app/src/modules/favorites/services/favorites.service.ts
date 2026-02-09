@@ -1,9 +1,10 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FavoriteStorageItem } from '../entities/favorite-storage.entity';
+import { FavoriteResourceType, FavoriteStorageItem } from '../entities/favorite-storage.entity';
 import { UniversalPermissionService } from '../../permission/services/permission.service';
 import { ResourceType, AccessRole } from '../../permission/entities/permission.entity';
+import { StorageClientService } from '@application/file-client';
 
 @Injectable()
 export class FavoritesService {
@@ -11,6 +12,7 @@ export class FavoritesService {
     @InjectRepository(FavoriteStorageItem)
     private readonly favoriteStorageItemRepository: Repository<FavoriteStorageItem>,
     private readonly permissionService: UniversalPermissionService,
+    private readonly storageClient: StorageClientService,
   ) {}
 
   async addFavoriteStorageItem(userId: number, storageId: string, itemId: string) {
@@ -32,6 +34,7 @@ export class FavoritesService {
       userId,
       storageId,
       itemId,
+      resourceType: FavoriteResourceType.STORAGE,
     });
 
     return this.favoriteStorageItemRepository.save(favorite);
@@ -50,6 +53,7 @@ export class FavoritesService {
       userId,
       itemId,
       storageId,
+      resourceType: FavoriteResourceType.SHARED,
     });
 
     return this.favoriteStorageItemRepository.save(favorite);
@@ -74,7 +78,17 @@ export class FavoritesService {
       order: { createdAt: 'DESC' },
     });
 
-    return favorites.map((f) => f.itemId);
+    const items = await this.storageClient
+      .getItemsByIds(favorites.map((f) => f.itemId))
+      .then((items) => {
+        return items.map((item) => {
+          return {
+            ...item,
+            resourceType: favorites.find((f) => f.itemId === item.id)?.resourceType,
+          };
+        });
+      });
+    return items;
   }
 
   async isFavorite(userId: number, itemId: string): Promise<boolean> {

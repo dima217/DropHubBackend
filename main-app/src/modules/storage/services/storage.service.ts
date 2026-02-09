@@ -4,6 +4,7 @@ import { UniversalPermissionService } from '../../permission/services/permission
 import { ResourceType, AccessRole } from '../../permission/entities/permission.entity';
 import { UsersService } from '../../user/services/user.service';
 import { StorageItemDto } from '../../file-client/types/storage';
+import { RoomClientService } from '@application/file-client/services/room-client.service';
 
 @Injectable()
 export class StorageService {
@@ -11,6 +12,7 @@ export class StorageService {
     private readonly storageClient: StorageClientService,
     private readonly permissionService: UniversalPermissionService,
     private readonly userService: UsersService,
+    private readonly roomClient: RoomClientService,
   ) {}
 
   async createStorage(userId: number) {
@@ -114,5 +116,28 @@ export class StorageService {
     const item = await this.storageClient.updateStorageItemTags(storageId, itemId, tags);
 
     return { success: true, item };
+  }
+
+  async archiveRoomToStorage(
+    userId: number,
+    storageId: string,
+    roomId: string,
+    parentId: string | null,
+    fileIds?: string[],
+  ) {
+    await this.permissionService.verifyUserAccess(userId, roomId, ResourceType.ROOM, [
+      AccessRole.ADMIN,
+      AccessRole.WRITE,
+    ]);
+
+    const result = await this.roomClient.archiveRoom({
+      roomId,
+      userId,
+      storageId,
+      parentId,
+      fileIds,
+    });
+
+    return result;
   }
 }

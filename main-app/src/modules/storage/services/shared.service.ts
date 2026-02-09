@@ -20,7 +20,14 @@ export class SharedService {
       ResourceType.SHARED,
     );
     const itemIds = permissions.map((permission) => permission.resourceId);
-    return this.storageClient.getItemsByIds(itemIds);
+    const items = await this.storageClient.getItemsByIds(itemIds);
+    return items.map((item) => {
+      const permission = permissions.find((permission) => permission.resourceId === item.id);
+      return {
+        ...item,
+        userRole: permission?.role,
+      };
+    });
   }
 
   async isItemInStorage(itemId: string, storageId: string): Promise<boolean> {

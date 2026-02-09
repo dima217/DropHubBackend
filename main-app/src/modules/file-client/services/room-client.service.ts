@@ -60,4 +60,23 @@ export class RoomClientService {
       count,
     });
   }
+
+  async archiveRoom(data: {
+    roomId: string;
+    userId: number;
+    storageId: string;
+    parentId: string | null;
+    fileIds?: string[];
+  }): Promise<{ success: boolean; roomId: string }> {
+    return this.send<
+      { success: boolean; roomId: string },
+      {
+        roomId: string;
+        userId: number;
+        storageId: string;
+        parentId: string | null;
+        fileIds?: string[];
+      }
+    >('room.archive', data);
+  }
 }

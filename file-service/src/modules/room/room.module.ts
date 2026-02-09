@@ -7,6 +7,8 @@ import { RoomController } from "./room.controller";
 import { ROOM_SERVICE_TOKEN } from "./interfaces";
 import { FileModule } from "../file/file.module";
 import { FileSchema } from "../file/schemas/file.schema";
+import { ArchiveRoomService } from "./services/archive-room.service";
+import { StorageModule } from "../storage/storage.module";
 
 @Module({
   imports: [
@@ -15,6 +17,7 @@ import { FileSchema } from "../file/schemas/file.schema";
       { name: File.name, schema: FileSchema },
     ]),
     forwardRef(() => FileModule),
+    forwardRef(() => StorageModule),
     PermissionClientModule,
   ],
   controllers: [RoomController],
@@ -24,7 +27,8 @@ import { FileSchema } from "../file/schemas/file.schema";
       useClass: RoomService,
     },
     RoomService,
+    ArchiveRoomService,
   ],
-  exports: [ROOM_SERVICE_TOKEN, RoomService],
+  exports: [ROOM_SERVICE_TOKEN, RoomService, ArchiveRoomService],
 })
 export class RoomModule {}

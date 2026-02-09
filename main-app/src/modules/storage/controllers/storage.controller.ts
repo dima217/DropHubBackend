@@ -39,6 +39,7 @@ import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { RemoveStorageTagsDto } from '@application/user/dto/remove-storage.tags.dto';
+import { ArchiveRoomDto } from '@application/file/dto/archive-room.dto';
 
 @ApiTags('Storage')
 @ApiExtraModels(StorageItemResponseDto, StorageResponseDto, DeleteItemResponseDto)
@@ -615,12 +616,33 @@ export class UserStorageController {
       userId: req.user.id,
     });
   }
+
+  @Post('archive-room')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  async archiveRoom(@Body() body: ArchiveRoomDto, @Req() req: RequestWithUser) {
+    return this.storageService.archiveRoomToStorage(
+      req.user.id,
+      body.storageId,
+      body.roomId,
+      body.parentId ?? null,
+      body.fileIds,
+    );
+  }
 }
 
 @ApiTags('Public Storage')
 @Controller('public/storage')
 export class PublicStorageController {
-  constructor(private readonly storageClient: StorageClientService) {}
+  constructor(
+    private readonly storageClient: StorageClientService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @Get(':token')
   @ApiOperation({

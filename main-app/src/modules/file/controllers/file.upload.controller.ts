@@ -25,6 +25,7 @@ import { ResourceType, AccessRole } from 'src/modules/permission/entities/permis
 import { UploadConfirmDto } from '../dto/upload/upload.confirm.dto';
 import { FileServiceRpcError, FileServiceErrorCode } from '../exceptions/file-rcp.error';
 import { RoomsGateway } from '@application/room/gateway/room.gateway';
+import { UploadConfirmSharedDto } from '../dto/upload/upload.confirm-shared.dto';
 
 @ApiTags('File Upload')
 @Controller('/upload')
@@ -179,6 +180,75 @@ export class FileUploadController {
     },
   })
   async confirmUploadToStorage(@Body() confirmData: UploadConfirmDto, @Req() req: RequestWithUser) {
+    const result = await this.fileClient.confirmUpload({
+      ...confirmData,
+      userId: req.user.id,
+    });
+    return result;
+  }
+
+  @Post('auth/storage/init-shared')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Init upload to shared storage',
+    description:
+      'Generates S3 presigned URL for uploading a file to shared storage. Returns uploadId and URL. Requires ADMIN or WRITE permission on the shared resource.',
+  })
+  @ApiBody({ type: UploadInitDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload session initialized successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        uploadId: { type: 'string', example: '605c72...' },
+        url: { type: 'string', example: 'https://s3.amazonaws.com/bucket/file?presigned=...' },
+      },
+    },
+  })
+  async initUploadToSharedStorage(
+    @Body() s3UploadData: UploadInitDto,
+    @Req() req: RequestWithUser,
+  ) {
+    const uploadData = {
+      ...s3UploadData,
+      uploaderIp: req.userIp,
+      userId: req.user.id,
+    };
+    const result = await this.fileClient.initUpload(uploadData);
+    return { success: true, result };
+  }
+
+  @Post('auth/storage/confirm-shared')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.SHARED,
+    [AccessRole.ADMIN, AccessRole.WRITE],
+    'body',
+    'resourceId',
+  )
+  @ApiOperation({
+    summary: 'Confirm upload to shared storage',
+    description:
+      'Confirms that the file was uploaded to S3 and creates Mongo record. Requires ADMIN or WRITE permission on the shared resource.',
+  })
+  @ApiBody({ type: UploadConfirmSharedDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload confirmed and file metadata saved',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        fileId: { type: 'string', example: '605c72...' },
+      },
+    },
+  })
+  async confirmUploadToSharedStorage(
+    @Body() confirmData: UploadConfirmSharedDto,
+    @Req() req: RequestWithUser,
+  ) {
     const result = await this.fileClient.confirmUpload({
       ...confirmData,
       userId: req.user.id,

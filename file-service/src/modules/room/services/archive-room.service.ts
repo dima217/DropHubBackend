@@ -47,7 +47,6 @@ export class ArchiveRoomService {
 
     filesToArchive = filesToArchive.filter(
       (file) =>
-        file.uploadSession?.status === FileUploadStatus.COMPLETE &&
         (!file.expiresAt || file.expiresAt > new Date())
     );
 

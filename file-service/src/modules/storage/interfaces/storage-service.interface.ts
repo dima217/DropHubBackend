@@ -1,6 +1,6 @@
 import { EnrichedStorageItemDto } from '../mappers/storage-item.mapper';
 import { StorageItem } from '../schemas/storage.item.schema';
-import { GetStorageItemsParams } from '../services/storage/storage.service';
+import { CreateSharedItemParams, GetStorageItemsParams } from '../services/storage/storage.service';
 
 export interface IStorageService {
   createStorage(userId: number): Promise<{
@@ -17,6 +17,7 @@ export interface IStorageService {
     fileId: string | null;
     userId: number;
   }): Promise<StorageItem>;
+  createSharedItem(params: CreateSharedItemParams): Promise<StorageItem>;
   getStorageById(storageId: string): Promise<{
     id: string;
     items: any[];

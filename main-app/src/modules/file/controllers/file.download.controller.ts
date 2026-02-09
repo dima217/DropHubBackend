@@ -13,6 +13,7 @@ import { RequirePermission } from 'src/auth/common/decorators/permission.decorat
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { DownloadRoomFileDto } from '../dto/download/download-file-room.dto';
 import { DownloadStorageFileDto } from '../dto/download/download-file-storage.dto';
+import { DownloadSharedFileDto } from '../dto/download/download-shared.dto';
 
 @ApiTags('File Download')
 @Controller('/download')
@@ -154,6 +155,22 @@ export class FileDownloadController {
   @ApiResponse({ status: 404, description: 'File not found in the storage' })
   async downloadFileByURLPrivateStorage(
     @Body() body: DownloadStorageFileDto,
+    @Req() req: RequestWithUser,
+  ) {
+    const urls = await this.fileClient.getDownloadLinks(body.fileIds, req.user.id);
+    return urls;
+  }
+
+  @Post('/url-private/shared')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.SHARED,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'resourceId',
+  )
+  async downloadFileByURLPrivateShared(
+    @Body() body: DownloadSharedFileDto,
     @Req() req: RequestWithUser,
   ) {
     const urls = await this.fileClient.getDownloadLinks(body.fileIds, req.user.id);

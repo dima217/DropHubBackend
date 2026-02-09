@@ -90,6 +90,7 @@ export class SearchService {
           creatorId: dto.creatorId,
           limit: dto.limit,
           offset: dto.offset,
+          mimeType: dto.mimeType,
         });
 
         results.storageItems = items.map((item) => ({

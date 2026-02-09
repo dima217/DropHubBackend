@@ -13,6 +13,7 @@ import { RevokeSharedPermissionDto } from '@application/permission/dto/revoke-pe
 import { GetItemStructureDto } from '../dto/shared/get-item.structure.dto';
 import { StorageClientService } from '@application/file-client';
 import { GetSharedItemParticipantsDto } from '../dto/shared/get-shared.item.participants.dto';
+import { CreateStorageItemDto } from '../dto/create-storage-item.dto';
 
 @Controller('shared')
 @ApiTags('Shared')
@@ -56,6 +57,28 @@ export class SharedController {
       getItemStructureDto.resourceId,
       req.user.id,
     );
+  }
+
+  @Post('create-item')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(ResourceType.SHARED, [AccessRole.WRITE], 'body', 'resourceId')
+  @ApiBody({ type: CreateStorageItemDto })
+  @ApiOperation({
+    summary: 'Create a new shared item',
+    description: 'Create a new shared item',
+  })
+  async createSharedItem(
+    @Req() req: RequestWithUser,
+    @Body() createSharedItemDto: CreateStorageItemDto,
+  ) {
+    return this.storageClient.createStorageItem({
+      userId: req.user.id,
+      storageId: createSharedItemDto.storageId,
+      name: createSharedItemDto.name,
+      isDirectory: createSharedItemDto.isDirectory,
+      parentId: createSharedItemDto.parentId ?? null,
+      fileId: createSharedItemDto.fileId ?? null,
+    });
   }
 
   @Post('/grant-permission')

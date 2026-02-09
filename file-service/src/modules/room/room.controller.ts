@@ -3,11 +3,13 @@ import { EventPattern, MessagePattern, Payload } from "@nestjs/microservices";
 import type { IRoomService } from "./interfaces";
 import { ROOM_SERVICE_TOKEN } from "./interfaces";
 import { UpdateRoomDto } from "./dto/update-room.dto";
+import { ArchiveRoomService } from "./services/archive-room.service";
 
 @Controller()
 export class RoomController {
   constructor(
-    @Inject(ROOM_SERVICE_TOKEN) private readonly roomService: IRoomService
+    @Inject(ROOM_SERVICE_TOKEN) private readonly roomService: IRoomService,
+    private readonly archiveRoomService: ArchiveRoomService
   ) {}
 
   @MessagePattern("room.create")
@@ -50,6 +52,11 @@ export class RoomController {
   @MessagePattern("room.getByIds")
   async getRoomsByIds(@Payload() data: { roomIds: string[] }) {
     return this.roomService.getRoomsByIds(data.roomIds);
+  }
+
+  @MessagePattern("room.archive")
+  async archiveRoom(@Payload() data: { roomId: string; userId: number; storageId: string; parentId: string | null; fileIds?: string[] }) {
+    return this.archiveRoomService.archiveRoom(data);
   }
 
   @EventPattern("room.updateParticipants")

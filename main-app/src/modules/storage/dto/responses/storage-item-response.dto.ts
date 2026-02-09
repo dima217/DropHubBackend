@@ -1,3 +1,4 @@
+import { AccessRole } from '@application/permission/entities/permission.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class FileMetaResponseDto {
@@ -29,6 +30,9 @@ export class FileMetaResponseDto {
 export class StorageItemResponseDto {
   @ApiProperty({ description: 'Item ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   id: string;
+
+  @ApiProperty({ description: 'User role', example: 'admin', required: false })
+  userRole?: AccessRole;
 
   @ApiProperty({ description: 'User ID who owns the item', example: '1' })
   userId: string;
