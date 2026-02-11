@@ -18,6 +18,7 @@ import type {
 import type { UploadData } from "./interfaces/file-request.interface";
 import { UploadConfirmDto } from "./dto/upload/upload-confirm.dto";
 import { UpdateFileDto } from "./dto/update-file.dto";
+import { ResourceType } from "../permission-client/permission-client.service";
 
 @Controller()
 export class FileController {
@@ -77,7 +78,7 @@ export class FileController {
   // Download operations
   @MessagePattern("file.getDownloadLink")
   async getDownloadLink(
-    @Payload() data: { fileIds: string[]; userId: number }
+    @Payload() data: { fileIds: string[]; userId: number, resourceType: ResourceType, resourceId: string }
   ) {
     return this.downloadService.getDownloadLinksAuthenticated(data);
   }

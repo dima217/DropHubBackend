@@ -65,7 +65,7 @@ export class AvatarService implements OnModuleInit {
   }
 
   private getPublicUrl(key: string): string {
-    return `http://10.11.251.195:9000/${this.avatarBucket}/${key}`;
+    return `http://10.78.194.195:9000/${this.avatarBucket}/${key}`;
   }
 
   async getUploadUrl(userId: string, contentType: string) {

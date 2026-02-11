@@ -67,7 +67,8 @@ export class UserStorageController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
   async getUserStorages(@Req() req: RequestWithUser) {
-    return this.storageService.getStoragesByUserId(req.user.id);
+    const storages = await this.storageService.getStoragesByUserId(req.user.id);
+    return storages[0];
   }
 
   @Post('create')

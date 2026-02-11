@@ -6,7 +6,10 @@ export class RestoreItemDto {
   @IsString()
   storageId: string;
 
-  @ApiProperty({ description: 'Item ID to restore', example: '123e4567-e89b-12d3-a456-426614174001' })
+  @ApiProperty({
+    description: 'Item ID to restore',
+    example: '123e4567-e89b-12d3-a456-426614174001',
+  })
   @IsString()
   itemId: string;
 
@@ -20,4 +23,3 @@ export class RestoreItemDto {
   @IsString()
   newParentId?: string | null;
 }
-

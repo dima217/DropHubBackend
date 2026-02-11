@@ -5,8 +5,6 @@ import {
   CreateFileMetaPayload,
   FileMeta,
   RoomWithFiles,
-  UploadToRoomPayload,
-  UploadToStoragePayload,
   UploadByTokenPayload,
   InitMultipartResult,
   SuccessResponse,
@@ -74,14 +72,6 @@ export class FileClientService {
       'file.confirmUpload',
       data,
     );
-  }
-
-  async uploadFileToRoom(data: UploadToRoomPayload): Promise<{ url: string }> {
-    return this.send<{ url: string }, UploadToRoomPayload>('file.uploadToRoom', data);
-  }
-
-  async uploadFileToStorage(data: UploadToStoragePayload): Promise<{ url: string }> {
-    return this.send<{ url: string }, UploadToStoragePayload>('file.uploadToStorage', data);
   }
 
   async uploadFileByToken(data: UploadByTokenPayload): Promise<{ url: string }> {
