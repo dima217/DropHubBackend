@@ -155,6 +155,7 @@ export class RoomService implements IRoomService {
       owner: room.owner,
       expiresAt: room.expiresAt?.toISOString() || null,
       maxBytes: room.maxBytes || 0,
+      archived: room.archived || false,
       uploadSession: room.uploadSession || {
         uploadId: undefined,
         status: "IN_PROGRESS",

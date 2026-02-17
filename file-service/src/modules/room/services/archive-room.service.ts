@@ -1,15 +1,20 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, forwardRef, NotFoundException } from "@nestjs/common";
 import { Room, RoomDocument } from "../../room/schemas/room.schema";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { StorageService } from "@/modules/storage/services/storage/storage.service";
-import { FileUploadStatus } from "@/constants/interfaces";
 import { FileDocument } from "@/modules/file/schemas/file.schema";
+import { Inject } from "@nestjs/common";
+import { FILE_SERVICE_TOKEN, type IFileService } from "@/modules/file/interfaces";
+import type { IStorageService } from "@/modules/storage/interfaces";
+import { STORAGE_SERVICE_TOKEN } from "@/modules/storage/interfaces";
 
 export class ArchiveRoomService {
   constructor(
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
-    private readonly storageService: StorageService
+    @Inject(forwardRef(() => STORAGE_SERVICE_TOKEN))
+    private readonly storageService: IStorageService,
+    @Inject(forwardRef(() => FILE_SERVICE_TOKEN)) 
+    private readonly fileService: IFileService,
   ) {}
 
   async archiveRoom(params: {
@@ -64,17 +69,26 @@ export class ArchiveRoomService {
       fileId: null,
     });
 
+    const copiedFiles: { fileId: string }[] = await Promise.all(
+      filesToArchive.map((file) =>
+        this.fileService.copyFile({
+          sourceFileId: String(file._id),
+          userId: userId.toString(),
+        })
+      )
+    );
+
     const folderId = String(folderItem._id);
 
     const archivedItems = await Promise.all(
-      filesToArchive.map((file) =>
+      copiedFiles.map((file) =>
         this.storageService.createItemInStorage({
           storageId,
           userId,
-          name: file.originalName,
+          name: new Date().getTime().toString(),
           isDirectory: false,
           parentId: folderId,
-          fileId: String(file._id),
+          fileId: file.fileId,
         })
       )
     );
