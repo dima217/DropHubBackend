@@ -405,13 +405,19 @@ export class StorageService implements IStorageService {
     creatorId?: number;
     limit?: number;
     mimeType?: string;
+    mimeTypes?: string[];
     offset?: number;
   }) {
-
     const items = await this.itemQuery.searchItems(params);
     const enrichedItems = await this.enrichItemsWithMetadata(items);
+    const allowedMimeTypes =
+      params.mimeTypes ?? (params.mimeType ? [params.mimeType] : undefined);
     return enrichedItems.filter(
-      item => item.isDirectory || item.fileMeta?.mimeType === params.mimeType
+      item =>
+        item.isDirectory ||
+        !allowedMimeTypes?.length ||
+        (item.fileMeta?.mimeType != null &&
+          allowedMimeTypes.includes(item.fileMeta.mimeType)),
     );
   }
 

@@ -127,6 +127,7 @@ export class FileController {
       roomIds: string[];
       query?: string;
       mimeType?: string;
+      mimeTypes?: string[];
       creatorId?: number;
       limit?: number;
       offset?: number;

@@ -123,6 +123,7 @@ export class FileClientService {
     roomIds: string[];
     query?: string;
     mimeType?: string;
+    mimeTypes?: string[];
     creatorId?: number;
     limit?: number;
     offset?: number;

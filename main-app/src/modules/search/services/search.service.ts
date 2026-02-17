@@ -54,10 +54,11 @@ export class SearchService {
       const roomIds = roomPermissions.map((p) => p.resourceId);
 
       if (roomIds.length > 0) {
+        const mimeTypes = dto.mimeTypes ?? (dto.mimeType ? [dto.mimeType] : undefined);
         const files = await this.fileClient.searchFiles({
           roomIds,
           query: dto.query,
-          mimeType: dto.mimeType,
+          mimeTypes,
           creatorId: dto.creatorId,
           limit: dto.limit,
           offset: dto.offset,
@@ -83,6 +84,7 @@ export class SearchService {
       const storageIds = storagePermissions.map((p) => p.resourceId);
 
       if (storageIds.length > 0) {
+        const mimeTypes = dto.mimeTypes ?? (dto.mimeType ? [dto.mimeType] : undefined);
         const items = await this.storageClient.searchStorageItems({
           storageIds,
           query: dto.query,
@@ -90,7 +92,7 @@ export class SearchService {
           creatorId: dto.creatorId,
           limit: dto.limit,
           offset: dto.offset,
-          mimeType: dto.mimeType,
+          mimeTypes,
         });
 
         results.storageItems = items.map((item) => ({

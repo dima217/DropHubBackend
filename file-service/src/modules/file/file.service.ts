@@ -351,6 +351,7 @@ export class FileService implements IFileService {
     roomIds: string[];
     query?: string;
     mimeType?: string;
+    mimeTypes?: string[];
     creatorId?: number;
     limit?: number;
     offset?: number;
@@ -359,10 +360,12 @@ export class FileService implements IFileService {
       roomIds,
       query,
       mimeType,
+      mimeTypes,
       creatorId,
       limit = 50,
       offset = 0,
     } = params;
+    const allowedMimeTypes = mimeTypes ?? (mimeType ? [mimeType] : undefined);
 
     if (roomIds.length === 0) {
       return [];
@@ -401,7 +404,10 @@ export class FileService implements IFileService {
             continue;
           }
 
-          if (mimeType && file.mimeType !== mimeType) {
+          if (
+            allowedMimeTypes?.length &&
+            !allowedMimeTypes.includes(file.mimeType)
+          ) {
             continue;
           }
 

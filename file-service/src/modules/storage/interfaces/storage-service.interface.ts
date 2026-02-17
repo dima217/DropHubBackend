@@ -84,6 +84,7 @@ export interface IStorageService {
     limit?: number;
     offset?: number;
     mimeType?: string;
+    mimeTypes?: string[];
   }): Promise<any[]>;
   renameStorageItem(params: {
     storageId: string;

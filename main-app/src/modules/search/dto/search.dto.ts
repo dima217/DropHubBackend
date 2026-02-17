@@ -33,6 +33,17 @@ export class SearchDto {
   @IsString()
   mimeType?: string;
 
+  @ApiProperty({
+    description: 'Search by file MIME types - filter by multiple types (only for files)',
+    required: false,
+    type: [String],
+    example: ['image/png', 'image/jpeg'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  mimeTypes?: string[];
+
   @ApiProperty({ description: 'Search by creator user ID', required: false, example: 1 })
   @IsOptional()
   @IsNumber()

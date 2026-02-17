@@ -116,6 +116,7 @@ export class StorageController {
       limit?: number;
       offset?: number;
       mimeType?: string;
+      mimeTypes?: string[];
     },
   ) {
     return this.storageService.searchStorageItems(data);
