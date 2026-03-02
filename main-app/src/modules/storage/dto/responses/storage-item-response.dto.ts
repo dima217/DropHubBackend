@@ -27,6 +27,38 @@ export class FileMetaResponseDto {
   creatorId?: number;
 }
 
+export class CreatorProfileInfoDto {
+  @ApiProperty({ description: 'Profile ID', example: 1 })
+  id: number;
+
+  @ApiProperty({ description: 'User display name', example: 'John Doe' })
+  firstName: string;
+
+  @ApiProperty({
+    description: 'URL of the avatar image',
+    example: 'https://example.com/avatar.jpg',
+    nullable: true,
+    required: false,
+  })
+  avatarUrl: string | null;
+}
+
+export class CreatorInfoDto {
+  @ApiProperty({ description: 'Creator user ID', example: 1 })
+  id: number;
+
+  @ApiProperty({ description: 'Creator email address', example: 'creator@example.com' })
+  email: string;
+
+  @ApiProperty({
+    description: 'Creator profile information',
+    type: CreatorProfileInfoDto,
+    nullable: true,
+    required: false,
+  })
+  profile: CreatorProfileInfoDto | null;
+}
+
 export class StorageItemResponseDto {
   @ApiProperty({ description: 'Item ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   id: string;
@@ -109,6 +141,16 @@ export class StorageItemResponseDto {
     required: false,
   })
   fileMeta?: FileMetaResponseDto;
+
+  @ApiProperty({
+    description:
+      'Creator information with id, email and profile (firstName, avatarUrl). ' +
+      'Present primarily for shared items responses.',
+    type: CreatorInfoDto,
+    nullable: true,
+    required: false,
+  })
+  creator?: CreatorInfoDto | null;
 }
 
 export class StorageResponseDto {

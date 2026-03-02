@@ -21,11 +21,40 @@ export class SharedService {
     );
     const itemIds = permissions.map((permission) => permission.resourceId);
     const items = await this.storageClient.getItemsByIds(itemIds);
+    const creatorIds = Array.from(
+      new Set(
+        items
+          .map((item) => item.fileMeta?.creatorId ?? item.creatorId)
+          .filter((id): id is number => typeof id === 'number'),
+      ),
+    );
+
+    const creators =
+      creatorIds.length > 0 ? await this.userService.getUsersByIds(creatorIds) : [];
+
     return items.map((item) => {
       const permission = permissions.find((permission) => permission.resourceId === item.id);
+      const effectiveCreatorId = item.fileMeta?.creatorId ?? item.creatorId;
+      const creatorUser = effectiveCreatorId
+        ? creators.find((u) => u.id === effectiveCreatorId)
+        : undefined;
+
       return {
         ...item,
         userRole: permission?.role,
+        creator: creatorUser
+          ? {
+              id: creatorUser.id,
+              email: creatorUser.email,
+              profile: creatorUser.profile
+                ? {
+                    id: creatorUser.profile.id,
+                    firstName: creatorUser.profile.firstName,
+                    avatarUrl: creatorUser.profile.avatarUrl,
+                  }
+                : null,
+            }
+          : null,
       };
     });
   }
