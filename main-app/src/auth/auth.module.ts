@@ -42,7 +42,7 @@ import { CodeModule } from './modules/code/code.module';
     JwtAuthGuard,
     RefreshTokenGuard,
   ],
-  exports: [WsJwtAuthGuard, JwtModule, JwtAuthGuard, RefreshTokenGuard],
+  exports: [WsJwtAuthGuard, JwtModule, JwtAuthGuard, RefreshTokenGuard, TokenService],
   controllers: [AuthController],
 })
 export class AuthModule {}

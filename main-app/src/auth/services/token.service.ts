@@ -28,6 +28,12 @@ export class TokenService {
     );
   }
 
+  verify(token: string): JwtPayload {
+    return this.jwtService.verify<JwtPayload>(token, {
+      secret: this.configService.get('JWT_SECRET'),
+    });
+  }
+
   async refreshToken(token: string): Promise<{
     accessToken: string;
     refreshToken: string;
