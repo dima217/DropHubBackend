@@ -28,6 +28,7 @@ interface AuthenticationCreateRoomParams {
   userId: number;
   username?: string;
   expiresAt?: string;
+  channelId?: string;
 }
 
 @Injectable()
@@ -60,6 +61,7 @@ export class RoomService implements IRoomService {
         maxBytes: 5000,
         owner: params.username ?? "",
         expiresAt,
+        channelId: params.channelId,
       });
 
       const savedRoom = await newRoom.save();
@@ -68,6 +70,7 @@ export class RoomService implements IRoomService {
       return {
         success: true,
         roomId,
+        channelId: params.channelId,
       };
     } catch (err) {
       throw new InternalServerErrorException("Failed to create room", {
@@ -135,23 +138,29 @@ export class RoomService implements IRoomService {
 
     return {
       id: room._id.toString(),
+      channelId: room.channelId,
       files: room.files,
       groups: room.groups?.map((g: any) => g.toString()) || [],
       createdAt: room.createdAt?.toISOString(),
-      participants: room.participants || [],
+      participants: room.participants || 0,
       owner: room.owner,
       expiresAt: room.expiresAt?.toISOString() || null,
       maxBytes: room.maxBytes || 0,
+      uploadSession: room.uploadSession || {
+        uploadId: undefined,
+        status: "IN_PROGRESS",
+      },
     };
   }
 
   private mapRoomToDto(room: any) {
     return {
       id: room._id.toString(),
+      channelId: room.channelId,
       files: room.files?.map((f: any) => f.toString()) || [],
       groups: room.groups?.map((g: any) => g.toString()) || [],
       createdAt: room.createdAt?.toISOString() || new Date().toISOString(),
-      participants: room.participants || [],
+      participants: room.participants || 0,
       owner: room.owner,
       expiresAt: room.expiresAt?.toISOString() || null,
       maxBytes: room.maxBytes || 0,
@@ -164,9 +173,20 @@ export class RoomService implements IRoomService {
   }
 
   async updateRoom(data: UpdateRoomDto) {
-    if (!data.owner) return { success: false, roomId: data.roomId };
+    const updates: Record<string, unknown> = {};
+    if (data.owner !== undefined) {
+      updates.owner = data.owner;
+    }
+    if (data.channelId !== undefined) {
+      updates.channelId = data.channelId;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return { success: false, roomId: data.roomId };
+    }
+
     await this.roomModel.findByIdAndUpdate(data.roomId, {
-      $set: { owner: data.owner },
+      $set: updates,
     });
     return { success: true, roomId: data.roomId };
   }

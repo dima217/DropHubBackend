@@ -14,7 +14,7 @@ export class RoomController {
 
   @MessagePattern("room.create")
   async createRoom(
-    @Payload() data: { userId: number; username?: string; expiresAt: string }
+    @Payload() data: { userId: number; username?: string; expiresAt?: string; channelId?: string }
   ) {
     return this.roomService.createRoom(data);
   }

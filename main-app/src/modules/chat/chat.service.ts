@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, IsNull } from 'typeorm';
+import { Logger } from '@nestjs/common';
 import { Channel } from './entities/channel.entity';
 import { ChannelMember } from './entities/channel-member.entity';
 import { Message } from './entities/message.entity';
@@ -16,6 +17,8 @@ import { JwtPayload } from 'src/auth/types';
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     @InjectRepository(Channel)
     private channelRepo: Repository<Channel>,
@@ -155,6 +158,93 @@ export class ChatService {
       channel_id: channel.id,
       ...(await this.formatChannelForResponse(channel, userId, member)),
     };
+  }
+
+  async createRoomChannel(roomId: string, ownerUserId: number | string, ownerName?: string) {
+    const userId = ownerUserId.toString();
+    const normalizedName = ownerName?.trim();
+    const channelName = normalizedName?.length ? `${normalizedName}'s room` : 'Room chat';
+
+    return this.channelRepo.manager.transaction(async (manager) => {
+      const channelRepository = manager.getRepository(Channel);
+      const memberRepository = manager.getRepository(ChannelMember);
+
+      const channel = channelRepository.create({
+        name: channelName,
+        type: 'group',
+        description: 'Auto-created room chat',
+        createdBy: userId,
+        roomId,
+      });
+      const savedChannel = await channelRepository.save(channel);
+
+      const ownerMember = memberRepository.create({
+        channelId: savedChannel.id,
+        userId,
+        memberType: 'admin',
+        role: 'admin',
+      });
+      await memberRepository.save(ownerMember);
+
+      return savedChannel;
+    });
+  }
+
+  async deleteChannel(channelId: string): Promise<void> {
+    await this.channelRepo.delete({ id: channelId });
+  }
+
+  async addMembersToRoomChannel(channelId: string, userIds: Array<number | string>) {
+    if (userIds.length === 0) {
+      return { added: 0 };
+    }
+
+    const channel = await this.channelRepo.findOne({
+      where: { id: channelId },
+    });
+    if (!channel) {
+      throw new NotFoundException('Channel not found');
+    }
+    if (channel.type !== 'group') {
+      throw new BadRequestException('Room channel must be group type');
+    }
+
+    const normalizedUserIds = userIds.map((id) => id.toString());
+    const existing = await this.memberRepo.find({
+      where: { channelId, userId: In(normalizedUserIds) },
+    });
+    const existingIds = new Set(existing.map((member) => member.userId));
+    const membersToInsert = normalizedUserIds
+      .filter((id) => !existingIds.has(id))
+      .map((id) =>
+        this.memberRepo.create({
+          channelId,
+          userId: id,
+          memberType: 'member',
+          role: 'member',
+        }),
+      );
+
+    if (membersToInsert.length > 0) {
+      await this.memberRepo.save(membersToInsert);
+    }
+
+    return { added: membersToInsert.length };
+  }
+
+  async removeMembersFromRoomChannel(channelId: string, userIds: Array<number | string>) {
+    if (userIds.length === 0) {
+      return { removed: 0 };
+    }
+
+    const normalizedUserIds = userIds.map((id) => id.toString());
+    const result = await this.memberRepo.delete({
+      channelId,
+      userId: In(normalizedUserIds),
+      memberType: 'member',
+    });
+
+    return { removed: result.affected ?? 0 };
   }
 
   private async findDirectChannel(userId1: string, userId2: string) {
@@ -328,8 +418,17 @@ export class ChatService {
     mentions?: string[],
     replyToId?: string,
   ) {
+    try {
     await this.ensureMember(channelId, senderId);
 
+    this.logger.debug('Creating message:', {
+      channelId,
+      senderId,
+      content,
+      clientRequestId,
+      mentions,
+      replyToId,
+    });
     const msg = this.messageRepo.create({
       channelId,
       senderId,
@@ -340,14 +439,19 @@ export class ChatService {
       mentions: mentions || [],
       clientRequestId: clientRequestId || null,
     });
+    this.logger.debug('Message created:', msg);
     await this.messageRepo.save(msg);
 
     const fullMsg = await this.messageRepo.findOne({
       where: { id: msg.id },
       relations: ['reactions'],
     });
-    if (!fullMsg) throw new NotFoundException('Message not found');
-    return fullMsg;
+      if (!fullMsg) throw new NotFoundException('Message not found');
+      return fullMsg;
+    } catch (error) {
+      this.logger.error('Error sending message:', error);
+      throw error;
+    }
   }
 
   async editMessage(channelId: string, messageId: string, userId: string, content: string) {

@@ -7,4 +7,8 @@ export class UpdateRoomDto {
   @IsString()
   @IsOptional()
   owner?: string;
+
+  @IsString()
+  @IsOptional()
+  channelId?: string;
 }

@@ -14,11 +14,13 @@ export class ChatController {
     return this.chatService.getChannels(req.user.id.toString());
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('channels')
   createChannel(@Body() dto: CreateChannelDto, @Req() req: RequestWithUser) {
     return this.chatService.createChannel(dto, req.user);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('channels/:id/messages')
   getMessages(
     @Req() req: RequestWithUser,

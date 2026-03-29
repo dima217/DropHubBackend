@@ -13,6 +13,12 @@ export class RoomDetailsDto {
   @ApiProperty({ example: '507f1f77bcf86cd799439011' })
   id: string;
 
+  @ApiPropertyOptional({
+    example: '9ce5607a-8c81-47c2-95ef-7f318ef95f9f',
+    description: 'Chat channel bound to this room',
+  })
+  channelId?: string;
+
   @ApiProperty({ type: [String], example: ['file1.pdf', 'file2.png'] })
   files: string[];
 

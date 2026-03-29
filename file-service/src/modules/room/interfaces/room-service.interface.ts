@@ -2,9 +2,10 @@ import { UpdateRoomDto } from "../dto/update-room.dto";
 
 export interface IRoomService {
   getRoomsByUserID(userId: number): Promise<any[]>;
-  createRoom(params: { userId: number; username?: string }): Promise<{
+  createRoom(params: { userId: number; username?: string; expiresAt?: string; channelId?: string }): Promise<{
     success: boolean;
     roomId: string;
+    channelId?: string;
   }>;
   updateRoom(
     data: UpdateRoomDto

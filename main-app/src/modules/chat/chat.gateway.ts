@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -12,18 +10,8 @@ import {
 import { Server } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import { TokenService } from 'src/auth/services/token.service';
 import { WsJwtAuthGuard } from 'src/auth/guards/ws-jwt-auth.guard';
-
-interface AuthenticatedSocket {
-  id: string;
-  handshake: { auth?: { token?: string }; query?: { token?: string } };
-  disconnect: () => void;
-  join: (room: string) => void;
-  leave: (room: string) => void;
-  emit: (event: string, data: unknown) => void;
-  to: (room: string) => { emit: (event: string, data: unknown) => void };
-}
+import type { USocket } from 'src/types/socket';
 
 @WebSocketGateway({
   cors: { origin: '*' },
@@ -33,43 +21,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private socketToUser = new Map<string, string>();
+  private readonly logger = new Logger(ChatGateway.name);
 
-  constructor(
-    private readonly chatService: ChatService,
-    private readonly jwtVerify: TokenService,
-  ) {}
+  constructor(private readonly chatService: ChatService) {}
 
-  async handleConnection(client: AuthenticatedSocket) {
-    const token =
-      (client.handshake?.auth?.token as string) ||
-      (Array.isArray(client.handshake?.query?.token)
-        ? client.handshake.query.token[0]
-        : client.handshake?.query?.token);
-    if (!token) {
-      client.emit('chat.error', { message: 'Missing token' });
-      client.disconnect();
-      return;
-    }
-    try {
-      const payload = this.jwtVerify.verify(token);
-      const userId = payload.id.toString();
-      (client as unknown as { userId: string }).userId = userId;
-      this.socketToUser.set(client.id, userId);
-    } catch {
-      client.emit('chat.error', { message: 'Invalid token' });
-      client.disconnect();
+  @UseGuards(WsJwtAuthGuard)
+  handleConnection(client: USocket) {
+    this.logger.debug('Handshake auth chat gateway:', client.handshake.auth);
+  }
+
+  handleDisconnect(client: USocket) {
+    if (client.user?.id) {
+      this.logger.log(`User ${client.user.id} disconnected from chat`);
     }
   }
 
-  handleDisconnect(client: AuthenticatedSocket) {
-    this.socketToUser.delete(client.id);
-  }
-
-  private getUserId(client: AuthenticatedSocket): string {
-    const userId = this.socketToUser.get(client.id);
-    if (!userId) throw new Error('Unauthorized');
-    return userId;
+  private getUserId(client: USocket): string {
+    return client.user.id.toString();
   }
 
   private room(channelId: string) {
@@ -79,7 +47,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.send')
   @UseGuards(WsJwtAuthGuard)
   async handleSend(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody()
     payload: {
       channel_id: string;
@@ -90,7 +58,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
   ) {
     try {
+      this.logger.warn('chat.send received:', payload);
       const userId = this.getUserId(client);
+      this.logger.error(
+        `chat.send received: user=${userId}, channel=${payload.channel_id}, request=${payload.client_request_id ?? 'none'}`,
+      );
       const msg = await this.chatService.sendMessage(
         payload.channel_id,
         userId,
@@ -101,7 +73,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       client.join(this.room(payload.channel_id));
       const formatted = this.chatService.formatMessage(msg);
-      Logger.log(`${JSON.stringify(formatted)}`);
+      this.logger.debug(`Message sent to ${payload.channel_id}: ${JSON.stringify(formatted)}`);
       this.server.to(this.room(payload.channel_id)).emit('chat.message', formatted);
       if (payload.client_request_id) {
         client.emit('chat.send.ack', {
@@ -120,7 +92,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.edit')
   @UseGuards(WsJwtAuthGuard)
   async handleEdit(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody()
     payload: { channel_id: string; message_id: string; content: string },
   ) {
@@ -148,7 +120,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.delete')
   @UseGuards(WsJwtAuthGuard)
   async handleDelete(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody()
     payload: { channel_id: string; message_id: string },
   ) {
@@ -175,7 +147,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.pin')
   @UseGuards(WsJwtAuthGuard)
   async handlePin(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody()
     payload: { channel_id: string; message_id: string; unpin?: boolean },
   ) {
@@ -204,7 +176,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.typing')
   @UseGuards(WsJwtAuthGuard)
   handleTyping(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody()
     payload: { channel_id: string; is_typing: boolean },
   ) {
@@ -219,7 +191,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.read')
   @UseGuards(WsJwtAuthGuard)
   async handleRead(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody()
     payload: { channel_id: string; message_id: string },
   ) {
@@ -240,7 +212,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.react')
   @UseGuards(WsJwtAuthGuard)
   async handleReact(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody()
     payload: {
       channel_id: string;
@@ -274,15 +246,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('chat.join')
   @UseGuards(WsJwtAuthGuard)
   handleJoin(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody() payload: { channel_id: string },
   ) {
     client.join(this.room(payload.channel_id));
   }
 
   @SubscribeMessage('chat.leave')
+  @UseGuards(WsJwtAuthGuard)
   handleLeave(
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: USocket,
     @MessageBody() payload: { channel_id: string },
   ) {
     client.leave(this.room(payload.channel_id));

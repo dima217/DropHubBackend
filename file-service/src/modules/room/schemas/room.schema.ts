@@ -22,6 +22,9 @@ export class Room {
   @Prop({ type: String })
   owner?: string;
 
+  @Prop({ type: String })
+  channelId?: string;
+
   @Prop({
     type: Date,
     default: undefined,

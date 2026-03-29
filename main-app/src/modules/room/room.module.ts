@@ -6,9 +6,10 @@ import { AuthModule } from 'src/auth/auth.module';
 import { PermissionModule } from '@application/permission/permission.module';
 import { UserModule } from '@application/user/user.module';
 import { RoomsGateway } from './gateway/room.gateway';
+import { ChatModule } from '@application/chat/chat.module';
 
 @Module({
-  imports: [FileClientModule, AuthModule, PermissionModule, UserModule],
+  imports: [FileClientModule, AuthModule, PermissionModule, UserModule, ChatModule],
   controllers: [RoomController],
   providers: [RoomService, RoomsGateway],
   exports: [RoomsGateway],

@@ -2,6 +2,7 @@ import { FileMeta } from './file';
 
 export interface RoomDto {
   id: string;
+  channelId?: string;
   files: string[];
   createdAt: string;
   participants: number;
@@ -13,6 +14,7 @@ export interface RoomDto {
 
 export interface RoomDetailsDto {
   id: string;
+  channelId?: string;
   files: FileMeta[];
   createdAt: string;
   participants: number;
@@ -31,6 +33,7 @@ export interface CreateRoomPayload {
 export interface CreateRoomResult {
   success: boolean;
   roomId: string;
+  channelId?: string;
 }
 
 export interface UpdateRoomResult {

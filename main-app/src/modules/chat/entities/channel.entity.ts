@@ -23,6 +23,9 @@ export class Channel {
   @Column({ type: 'varchar', length: 255, nullable: true })
   description: string | null;
 
+  @Column({ name: 'room_id', type: 'varchar', nullable: true, unique: true })
+  roomId: string | null;
+
   @Column({ name: 'created_by', type: 'varchar', length: 255 })
   createdBy: string;
 

@@ -7,6 +7,7 @@ import { UsersService } from '../../user/services/user.service';
 import { RoomDetailsDto } from '../dto/room.details.dto';
 import { RoomsGateway } from '../gateway/room.gateway';
 import { ParticipantDto, ParticipantProfileDto } from '../dto/participant.dto';
+import { ChatService } from '@application/chat/chat.service';
 
 @Injectable()
 export class RoomService {
@@ -15,21 +16,51 @@ export class RoomService {
     private readonly permissionService: UniversalPermissionService,
     private readonly userService: UsersService,
     private readonly roomsGateway: RoomsGateway,
+    private readonly chatService: ChatService,
   ) {}
 
   async createRoom(userId: number, username: string, expiresAt?: string) {
-    const result = await this.roomClient.createRoom({ userId, username, expiresAt });
+    let roomId: string | null = null;
+    let channelId: string | null = null;
 
-    await this.permissionService.createPermission({
-      userId,
-      resourceId: result.roomId,
-      resourceType: ResourceType.ROOM,
-      role: AccessRole.ADMIN,
-    });
+    try {
+      const roomResult = await this.roomClient.createRoom({ userId, username, expiresAt });
+      roomId = roomResult.roomId;
 
-    this.roomClient.updateParticipantsCount(result.roomId, 1);
+      const channel = await this.chatService.createRoomChannel(roomId, userId, username);
+      channelId = channel.id;
 
-    return result;
+      const roomUpdateResult = await this.roomClient.updateRoomById({
+        roomId,
+        channelId,
+      });
+
+      if (!roomUpdateResult.success) {
+        throw new BadRequestException('Failed to bind chat channel to room');
+      }
+
+      await this.permissionService.createPermission({
+        userId,
+        resourceId: roomId,
+        resourceType: ResourceType.ROOM,
+        role: AccessRole.ADMIN,
+      });
+
+      this.roomClient.updateParticipantsCount(roomId, 1);
+
+      return {
+        ...roomResult,
+        channelId,
+      };
+    } catch (error) {
+      if (channelId) {
+        await this.chatService.deleteChannel(channelId).catch(() => undefined);
+      }
+      if (roomId) {
+        await this.roomClient.deleteRoom({ roomId, userId }).catch(() => undefined);
+      }
+      throw error;
+    }
   }
 
   async getRoomsByUserId(
@@ -114,6 +145,26 @@ export class RoomService {
           resourceType: ResourceType.ROOM,
           role: defaultRole,
         });
+
+        if (room.channelId) {
+          try {
+            await this.chatService.addMembersToRoomChannel(room.channelId, [targetUserId]);
+          } catch (chatError) {
+            await this.permissionService
+              .revokePermission({
+                actingUserId,
+                targetUserId,
+                resourceId: roomId,
+                resourceType: ResourceType.ROOM,
+              })
+              .catch(() => undefined);
+            const reason =
+              chatError instanceof Error ? chatError.message : 'Failed to add user to room chat';
+            results.failed.push({ userId: targetUserId, reason });
+            continue;
+          }
+        }
+
         results.successful.push(targetUserId);
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -207,6 +258,10 @@ export class RoomService {
           }
         }
 
+        if (room.channelId) {
+          await this.chatService.removeMembersFromRoomChannel(room.channelId, [targetUserId]);
+        }
+
         await this.permissionService.revokePermission({
           actingUserId,
           targetUserId,
@@ -229,7 +284,7 @@ export class RoomService {
       this.roomClient.updateParticipantsCount(roomId, allPermissions.length);
     }
 
-    for (const userId of targetUserIds) {
+    for (const userId of results.successful) {
       this.roomsGateway.sendRemovedFromRoom(userId, room.id);
     }
     this.roomsGateway.sendRoomUpdate(room.id);

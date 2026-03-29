@@ -14,7 +14,6 @@ import { FileModule } from '@application/file/files.module';
 import { UserStorageModule } from '@application/storage/user_storage.module';
 import { RoomModule } from '@application/room/room.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
-import { CommentsModule } from './modules/chat_deprecated/comments.module';
 import { SearchModule } from './modules/search/search.module';
 import { AvatarModule } from '@application/avatar/avatar.module';
 import { ChatModule } from '@application/chat/chat.module';
@@ -38,7 +37,6 @@ import { ChatModule } from '@application/chat/chat.module';
     RelationshipsModule,
     PermissionModule,
     FavoritesModule,
-    CommentsModule,
     SearchModule,
     AvatarModule,
     ChatModule,
