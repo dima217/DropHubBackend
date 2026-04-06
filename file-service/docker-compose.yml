@@ -33,6 +33,7 @@ services:
 
       # RabbitMQ
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - CONVERSION_BINARIES_REQUIRED=true
 
     depends_on:
       mongo:

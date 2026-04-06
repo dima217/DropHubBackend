@@ -9,6 +9,8 @@ import {
   InitMultipartResult,
   SuccessResponse,
   RoomFileUpdateResponse,
+  ConvertFilePayload,
+  ConvertFileResult,
 } from '../types/file';
 import { UploadInitMultipartDto } from '@application/file/dto/upload/multipart/upload-init-multipart.dto';
 import { UploadCompleteDto } from '@application/file/dto/upload/upload-complete.dto';
@@ -48,6 +50,10 @@ export class FileClientService {
 
   async updateRoomFile(data: UpdateFileDto): Promise<RoomFileUpdateResponse> {
     return this.send<RoomFileUpdateResponse, UpdateFileDto>('file.update', data);
+  }
+
+  async convertFile(data: ConvertFilePayload): Promise<ConvertFileResult> {
+    return this.send<ConvertFileResult, ConvertFilePayload>('file.convert', data);
   }
 
   async deleteFiles(fileIds: string[], roomId: string): Promise<{ success: boolean }> {

@@ -1,5 +1,5 @@
 # Builder stage
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -15,19 +15,29 @@ RUN yarn build
 
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
 COPY package.json ./
+COPY scripts/install-conversion-binaries.sh /usr/local/bin/install-conversion-binaries.sh
+
+RUN sed -i 's/\r$//' /usr/local/bin/install-conversion-binaries.sh && \
+    chmod +x /usr/local/bin/install-conversion-binaries.sh && \
+    /bin/sh /usr/local/bin/install-conversion-binaries.sh
 
 RUN yarn install --production --frozen-lockfile --pure-lockfile
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/default-avatars ./default-avatars
 
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid 1001 --system --create-home --home-dir /home/nodejs --shell /usr/sbin/nologin nodejs && \
+    mkdir -p /home/nodejs/.cache/dconf && \
+    chown -R nodejs:nodejs /home/nodejs
+
+ENV HOME=/home/nodejs
+ENV XDG_CACHE_HOME=/home/nodejs/.cache
 USER nodejs
 
 EXPOSE 3001

@@ -6,8 +6,10 @@ import { UploadService } from "./services/upload/upload.service";
 import { DownloadService } from "./services/download/download.service";
 import { MultipartUploadService } from "./services/upload/multipart.upload.service";
 import { PreviewService } from "./services/preview/preview.service";
+import { ConversionService } from "./services/conversion/conversion.service";
 import { File, FileSchema } from "./schemas/file.schema";
 import { Room, RoomSchema } from "../room/schemas/room.schema";
+import { StorageItem, StorageItemSchema } from "../storage/schemas/storage.item.schema";
 import { S3Module } from "../s3/s3.module";
 import { PermissionClientModule } from "../permission-client/permission-client.module";
 import { TokenClientModule } from "../token-client/token-client.module";
@@ -34,6 +36,7 @@ import {
     MongooseModule.forFeature([
       { name: File.name, schema: FileSchema },
       { name: Room.name, schema: RoomSchema },
+      { name: StorageItem.name, schema: StorageItemSchema },
       { name: UploadSession.name, schema: UploadSessionSchema },
     ]),
     S3Module,
@@ -70,6 +73,7 @@ import {
     DownloadService,
     MultipartUploadService,
     PreviewService,
+    ConversionService,
     S3ReadStream,
     S3WriteStream,
     UploadSessionRepository,
@@ -85,6 +89,7 @@ import {
     DownloadService,
     MultipartUploadService,
     PreviewService,
+    ConversionService,
   ],
 })
 export class FileModule {}

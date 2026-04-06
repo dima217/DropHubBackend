@@ -19,6 +19,8 @@ import type { UploadData } from "./interfaces/file-request.interface";
 import { UploadConfirmDto } from "./dto/upload/upload-confirm.dto";
 import { UpdateFileDto } from "./dto/update-file.dto";
 import { ResourceType } from "../permission-client/permission-client.service";
+import { ConvertFileDto } from "./dto/convert-file.dto";
+import { ConversionService } from "./services/conversion/conversion.service";
 
 @Controller()
 export class FileController {
@@ -31,7 +33,8 @@ export class FileController {
     @Inject(MULTIPART_UPLOAD_SERVICE_TOKEN)
     private readonly multipartUploadService: IMultipartUploadService,
     @Inject(PREVIEW_SERVICE_TOKEN)
-    private readonly previewService: IPreviewService
+    private readonly previewService: IPreviewService,
+    private readonly conversionService: ConversionService
   ) {}
 
   @MessagePattern("file.create")
@@ -62,6 +65,11 @@ export class FileController {
   @MessagePattern("file.update")
   async updateFile(@Payload() data: UpdateFileDto) {
     return this.fileService.updateFile(data);
+  }
+
+  @MessagePattern("file.convert")
+  async convertFile(@Payload() data: ConvertFileDto) {
+    return this.conversionService.convertFile(data);
   }
 
   // Upload operations

@@ -23,6 +23,7 @@ import { RequirePermission } from 'src/auth/common/decorators/permission.decorat
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { UpdateFileDto } from '../dto/update-file.dto';
 import { RoomsGateway } from '@application/room/gateway/room.gateway';
+import { ConvertFileDto } from '../dto/convert-file.dto';
 
 @ApiTags('Files')
 @ApiExtraModels(DeleteFileResponseDto, RoomFileResponseDto, ArchiveRoomResponseDto)
@@ -113,6 +114,59 @@ export class FileController {
       this.roomGateway.sendRoomUpdate(result.roomId);
     }
     return result;
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.ROOM,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'roomId',
+  )
+  @Post('/convert-room')
+  @ApiOperation({
+    summary: 'Convert room file and save as new',
+    description:
+      'Converts a room file into another format and saves converted result(s) as new file(s) in room storage.',
+  })
+  @ApiBody({ type: ConvertFileDto })
+  async convertRoomFile(@Body() dto: ConvertFileDto) {
+    return this.fileClient.convertFile({ ...dto, storageId: undefined, parentId: undefined });
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.STORAGE,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'storageId',
+  )
+  @Post('/convert-storage')
+  @ApiOperation({
+    summary: 'Convert storage file and save as new',
+    description:
+      'Converts a file from user storage into another format and saves converted result(s) back to storage.',
+  })
+  @ApiBody({ type: ConvertFileDto })
+  async convertStorageFile(@Body() dto: ConvertFileDto) {
+    return this.fileClient.convertFile({ ...dto, roomId: undefined });
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(
+    ResourceType.ROOM,
+    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+    'body',
+    'roomId',
+  )
+  @Post('/convert')
+  @ApiOperation({
+    summary: 'Convert file (legacy alias)',
+    description: 'Legacy alias for convert-room endpoint.',
+  })
+  @ApiBody({ type: ConvertFileDto })
+  async convertFileLegacy(@Body() dto: ConvertFileDto) {
+    return this.fileClient.convertFile(dto);
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)

@@ -81,3 +81,38 @@ export interface RoomFileUpdateResponse {
   success: boolean;
   roomId: string;
 }
+
+export type FileConversionType =
+  | 'csv_to_json'
+  | 'json_to_csv'
+  | 'xml_to_json'
+  | 'json_to_xml'
+  | 'xlsx_to_json'
+  | 'docx_to_pdf'
+  | 'pdf_to_text'
+  | 'pdf_to_images'
+  | 'pptx_to_pdf';
+
+export interface ConvertFilePayload {
+  roomId?: string;
+  storageId?: string;
+  parentId?: string | null;
+  fileId: string;
+  conversion: FileConversionType;
+}
+
+export interface ConvertFileResult {
+  success: boolean;
+  conversion: FileConversionType;
+  sourceFileId: string;
+  sourceChecksum: string;
+  targetType: 'room' | 'storage';
+  targetId: string;
+  createdFiles: Array<{
+    fileId: string;
+    fileName: string;
+    mimeType: string;
+    size: number;
+    text?: string;
+  }>;
+}
