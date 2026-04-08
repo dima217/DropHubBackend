@@ -48,6 +48,11 @@ export interface GetSharedItemStructurePayload {
   userId: number;
 }
 
+export interface AdminRestoreDeletedStructurePayload {
+  itemId: string;
+  newParentId?: string | null;
+}
+
 @Injectable()
 export class StorageClientService {
   constructor(@Inject('FILE_SERVICE') private readonly fileClient: ClientProxy) {}
@@ -91,6 +96,12 @@ export class StorageClientService {
     );
   }
 
+  async getFullStorageStructureAdmin(storageId: string): Promise<StorageItemDto[]> {
+    return this.send<StorageItemDto[], { storageId: string }>('storage.getFullStructureAdmin', {
+      storageId,
+    });
+  }
+
   async deleteStorageItem(data: DeleteStorageItemPayload): Promise<DeleteStorageItemResult> {
     return this.send<DeleteStorageItemResult, DeleteStorageItemPayload>('storage.deleteItem', data);
   }
@@ -116,6 +127,15 @@ export class StorageClientService {
       storageId,
       userId,
     });
+  }
+
+  async restoreDeletedStructureAdmin(
+    data: AdminRestoreDeletedStructurePayload,
+  ): Promise<DeleteStorageItemResult> {
+    return this.send<DeleteStorageItemResult, AdminRestoreDeletedStructurePayload>(
+      'storage.restoreDeletedStructureAdmin',
+      data,
+    );
   }
 
   async getStorageItemByToken(token: string): Promise<StorageItemWithChildrenDto> {

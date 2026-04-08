@@ -11,6 +11,7 @@ export interface StorageItemDto {
   creatorId?: number;
   tags?: string[];
   deletedAt?: string | null;
+  permanentDeleteAt?: string | null;
   fileMeta?: FileMeta;
   childrenCount?: number;
   filesCount?: number;

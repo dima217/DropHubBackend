@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UniversalPermissionService } from './services/permission.service';
@@ -9,7 +9,7 @@ import { CacheModule } from 'src/cache/cache.module';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Permission]), UserModule, CacheModule],
+  imports: [TypeOrmModule.forFeature([Permission]), forwardRef(() => UserModule), CacheModule],
   controllers: [PermissionController],
   providers: [UniversalPermissionService, PermissionGuard],
   exports: [UniversalPermissionService, PermissionGuard],

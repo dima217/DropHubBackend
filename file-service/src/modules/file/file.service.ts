@@ -295,6 +295,10 @@ export class FileService implements IFileService {
     fileIds: string[],
     roomId?: string
   ): Promise<void> {
+    await this.hardDeleteFiles(fileIds, roomId);
+  }
+
+  private async hardDeleteFiles(fileIds: string[], roomId?: string): Promise<void> {
     if (!fileIds.length) return;
 
     const files = await this.fileModel
@@ -313,13 +317,22 @@ export class FileService implements IFileService {
       } catch (err) {
         console.error(`Failed to remove files from room ${roomId}`, err);
       }
+    } else {
+      await this.roomModel.updateMany(
+        { files: { $in: fileIds } },
+        {
+          $pull: {
+            files: { $in: fileIds },
+          },
+        }
+      );
     }
 
     for (const file of files) {
       try {
-        await this.deleteFromS3(file.storedName);
+        await this.deleteFromS3(file.key);
       } catch (err) {
-        console.error(`Failed to delete from S3: ${file.storedName}`, err);
+        console.error(`Failed to delete from S3: ${file.key}`, err);
       }
     }
 
@@ -332,6 +345,7 @@ export class FileService implements IFileService {
         console.error(`Cache cleanup failed for file ${fileId}`, err);
       }
     }
+
     await this.fileModel.deleteMany({ _id: { $in: fileIds } });
   }
 

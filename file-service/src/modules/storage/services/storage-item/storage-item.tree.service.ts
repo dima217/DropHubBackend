@@ -45,12 +45,16 @@ export class StorageItemTreeService {
   }
 
   async getChildrenCount(
-    itemId: string
+    itemId: string,
+    includeDeleted = false
   ): Promise<{ total: number; files: number; folders: number }> {
-    const children = await this.repo.findLean({
+    const query: any = {
       parentId: new Types.ObjectId(itemId),
-      deletedAt: null,
-    });
+    };
+    if (!includeDeleted) {
+      query.deletedAt = null;
+    }
+    const children = await this.repo.findLean(query);
 
     const total = children.length;
     const files = children.filter((child) => !child.isDirectory).length;
@@ -61,6 +65,12 @@ export class StorageItemTreeService {
 
   async getAllItemsByStorageId(storageId: string): Promise<StorageItemLean[]> {
     return this.repo.findLean({ storageId, deletedAt: null });
+  }
+
+  async getAllItemsByStorageIdIncludingDeleted(
+    storageId: string
+  ): Promise<StorageItemLean[]> {
+    return this.repo.findLean({ storageId });
   }
 
   async moveItem(

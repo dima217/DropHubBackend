@@ -43,7 +43,24 @@ export class StorageItemQueryService {
     return this.repo.findLean({
       storageId,
       deletedAt: { $ne: null },
+      permanentDeleteAt: null,
     });
+  }
+
+  async getItemsPendingPermanentDelete(storageId?: string): Promise<StorageItem[]> {
+    const query: Record<string, unknown> = {
+      deletedAt: { $ne: null },
+      permanentDeleteAt: { $ne: null },
+    };
+    if (storageId) {
+      query.storageId = storageId;
+    }
+    return this.repo.findLean(query);
+  }
+
+  async hasFileReference(fileId: string): Promise<boolean> {
+    const item = await this.repo.findOne({ fileId: new Types.ObjectId(fileId) });
+    return Boolean(item);
   }
 
   async getItemsByIds(itemIds: string[]): Promise<StorageItemLean[]> {

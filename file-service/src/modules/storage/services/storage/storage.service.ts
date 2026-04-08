@@ -201,13 +201,15 @@ export class StorageService implements IStorageService {
   }
 
   private async enrichItemsWithMetadata(
-    items: StorageItem[]
+    items: StorageItem[],
+    includeDeletedForDirectoryStats = false
   ): Promise<EnrichedStorageItemDto[]> {
     const enrichedItems = await Promise.all(
       items.map(async (item): Promise<EnrichedStorageItemDto> => {
         if (item.isDirectory) {
           const childrenCount = await this.itemTree.getChildrenCount(
-            item._id.toString()
+            item._id.toString(),
+            includeDeletedForDirectoryStats
           );
           return StorageItemMapper.toDirectoryDto(item, childrenCount);
         } else {
@@ -238,6 +240,11 @@ export class StorageService implements IStorageService {
     const items = await this.itemTree.getAllItemsByStorageId(storageId);
 
     return this.enrichItemsWithMetadata(items);
+  }
+
+  async getFullStorageStructureAdmin(storageId: string): Promise<EnrichedStorageItemDto[]> {
+    const items = await this.itemTree.getAllItemsByStorageIdIncludingDeleted(storageId);
+    return this.enrichItemsWithMetadata(items, true);
   }
 
   async getStorageStructure(
@@ -333,6 +340,83 @@ export class StorageService implements IStorageService {
   async getTrashItems(storageId: string) {
     const items = await this.itemQuery.getTrashItems(storageId);
     return items.map((item) => StorageItemMapper.toBaseDto(item));
+  }
+
+  async restoreDeletedStructureAdmin(params: {
+    itemId: string;
+    newParentId?: string | null;
+  }) {
+    const item = await this.itemQuery.getItemById(params.itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
+    if (!item.deletedAt) {
+      throw new BadRequestException("Item is not deleted.");
+    }
+
+    await this.itemTrash.restore(params.itemId, params.newParentId);
+    return { success: true, itemId: params.itemId };
+  }
+
+  async purgeStorageItemsPermanently() {
+    const now = new Date();
+    const expiredItems = await this.itemQuery.getItemsPendingPermanentDelete();
+    if (expiredItems.length === 0) {
+      return { purgedRoots: 0, purgedItems: 0, purgedFiles: 0 };
+    }
+
+    const expiredIds = new Set(
+      expiredItems
+        .filter(
+          (item) =>
+            item.permanentDeleteAt != null && new Date(item.permanentDeleteAt) <= now
+        )
+        .map((item) => item._id.toString())
+    );
+
+    if (expiredIds.size === 0) {
+      return { purgedRoots: 0, purgedItems: 0, purgedFiles: 0 };
+    }
+
+    const rootIds = Array.from(expiredIds).filter((id) => {
+      const node = expiredItems.find((item) => item._id.toString() === id);
+      if (!node?.parentId) {
+        return true;
+      }
+      return !expiredIds.has(node.parentId.toString());
+    });
+
+    let purgedItems = 0;
+    let purgedFiles = 0;
+
+    for (const rootId of rootIds) {
+      const removedItems = await this.itemTrash.hardDelete(rootId);
+      purgedItems += removedItems.length;
+
+      const fileIds = Array.from(
+        new Set(
+          removedItems
+            .filter((item) => !item.isDirectory && item.fileId)
+            .map((item) => item.fileId!.toString())
+        )
+      );
+
+      if (fileIds.length > 0) {
+        const orphanedFileIds: string[] = [];
+        for (const fileId of fileIds) {
+          const referenced = await this.itemQuery.hasFileReference(fileId);
+          if (!referenced) {
+            orphanedFileIds.push(fileId);
+          }
+        }
+        if (orphanedFileIds.length > 0) {
+          await this.fileService.deleteFilesCompletely(orphanedFileIds);
+          purgedFiles += orphanedFileIds.length;
+        }
+      }
+    }
+
+    return { purgedRoots: rootIds.length, purgedItems, purgedFiles };
   }
 
   async updateStorageItemTags(

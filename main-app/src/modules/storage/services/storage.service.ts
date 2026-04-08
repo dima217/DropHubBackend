@@ -140,4 +140,43 @@ export class StorageService {
 
     return result;
   }
+
+  async restoreDeletedStructureAdmin(itemId: string, newParentId?: string | null) {
+    return this.storageClient.restoreDeletedStructureAdmin({ itemId, newParentId });
+  }
+
+  async getAdminUserStoragesWithDeleted(userId: number) {
+    const user = await this.userService.getUserById(userId);
+    if (!user) {
+      return { user: null, storages: [] };
+    }
+
+    const permissions = await this.permissionService.getPermissionsByUserIdAndType(
+      userId,
+      ResourceType.STORAGE,
+    );
+    const adminStoragePermissions = permissions.filter((permission) => permission.role === AccessRole.ADMIN);
+    const storageIds = Array.from(new Set(adminStoragePermissions.map((permission) => permission.resourceId)));
+    const storages = storageIds.length ? await this.storageClient.getStoragesByIds(storageIds) : [];
+
+    const storagesWithItems = await Promise.all(
+      storages.map(async (storage) => ({
+        ...storage,
+        userRole: AccessRole.ADMIN,
+        items: await this.storageClient.getFullStorageStructureAdmin(storage.id),
+      })),
+    );
+
+    return {
+      user: {
+        id: user.id,
+        uuid: user.uuid,
+        email: user.email,
+        role: user.role,
+        isBanned: user.isBanned,
+        profile: user.profile ?? null,
+      },
+      storages: storagesWithItems,
+    };
+  }
 }

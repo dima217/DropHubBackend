@@ -31,6 +31,28 @@ export class UsersService {
     });
   }
 
+  async findAllAdminList(params: {
+    page: number;
+    limit: number;
+    email?: string;
+  }): Promise<[User[], number]> {
+    const { page, limit, email } = params;
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.profile', 'profile')
+      .orderBy('user.id', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (email?.trim()) {
+      qb.where('LOWER(user.email) LIKE :email', {
+        email: `%${email.trim().toLowerCase()}%`,
+      });
+    }
+
+    return qb.getManyAndCount();
+  }
+
   async getUserById(id: number): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: { id },
@@ -75,6 +97,16 @@ export class UsersService {
     }
 
     return this.userRepository.save({ ...user, ...dto });
+  }
+
+  async setBanStatus(id: number, isBanned: boolean): Promise<User> {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    user.isBanned = isBanned;
+    return this.userRepository.save(user);
   }
 
   async updatePassword(id: number, newPassword: string): Promise<void> {

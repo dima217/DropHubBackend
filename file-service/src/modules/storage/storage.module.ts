@@ -13,6 +13,7 @@ import { StorageItemTrashService } from "./services/storage-item/storage-item.tr
 import { StorageItemCopyService } from "./services/storage-item/storage-item.copy.service";
 import { StorageItemCommandService } from "./services/storage-item/storage-item.command.service";
 import { FileModule } from "../file/file.module";
+import { StorageSoftDeleteCleanupService } from "./services/storage-soft-delete-cleanup.service";
 import {
   STORAGE_SERVICE_TOKEN,
   STORAGE_ITEM_SERVICE_TOKEN,
@@ -41,6 +42,7 @@ import {
     StorageItemTrashService,
     StorageItemCopyService,
     StorageItemCommandService,
+    StorageSoftDeleteCleanupService,
   ],
   exports: [STORAGE_SERVICE_TOKEN, StorageService, StorageItemQueryService],
 })

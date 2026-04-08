@@ -112,6 +112,15 @@ export class StorageItemResponseDto {
   })
   deletedAt?: string | null;
 
+  @ApiProperty({
+    description:
+      'Scheduled hard-delete timestamp after permanent delete from trash (admin recovery window end)',
+    example: '2026-04-18T10:20:00.000Z',
+    nullable: true,
+    required: false,
+  })
+  permanentDeleteAt?: string | null;
+
   // For directories
   @ApiProperty({
     description: 'Total number of children (only for directories)',

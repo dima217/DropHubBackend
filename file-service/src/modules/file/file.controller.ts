@@ -124,8 +124,7 @@ export class FileController {
   async deleteFileCompletely(
     @Payload() data: { fileIds: string[]; roomId?: string }
   ) {
-    await this.fileService.deleteFilesCompletely(data.fileIds, data.roomId);
-    return { success: true };
+    return this.fileService.deleteFilesCompletely(data.fileIds, data.roomId);
   }
 
   @MessagePattern("file.search")

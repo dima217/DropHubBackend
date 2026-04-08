@@ -35,11 +35,14 @@ import {
   DeleteItemResponseDto,
 } from '../dto/responses/storage-item-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
+import { RolesGuard } from 'src/auth/guards/roles-guard';
+import { Roles } from 'src/auth/common/decorators/role.decorator';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { RemoveStorageTagsDto } from '@application/user/dto/remove-storage.tags.dto';
 import { ArchiveRoomDto } from '@application/file/dto/archive-room.dto';
+import { RestoreDeletedStructureAdminDto } from '../dto/admin/restore-deleted-structure-admin.dto';
 
 @ApiTags('Storage')
 @ApiExtraModels(StorageItemResponseDto, StorageResponseDto, DeleteItemResponseDto)
@@ -446,6 +449,34 @@ export class UserStorageController {
     }
 
     return await this.storageClient.getTrashItems(body.storageId, req.user.id);
+  }
+
+  @Get('admin/users/:userId/storages')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Admin: get one user storages with full tree',
+    description:
+      'Returns storages for selected user only. Each storage contains full structure including deleted and pending permanent deletion items.',
+  })
+  async getAdminUserStorages(@Param('userId') userId: string) {
+    const parsedUserId = Number(userId);
+    if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+      throw new BadRequestException('Valid userId is required.');
+    }
+    return this.storageService.getAdminUserStoragesWithDeleted(parsedUserId);
+  }
+
+  @Post('admin/restore-deleted-structure')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Admin: restore deleted storage structure',
+    description:
+      'Restores a previously permanently-deleted storage structure (root + children) back into user tree before retention expires.',
+  })
+  async restoreDeletedStructureForAdmin(@Body() body: RestoreDeletedStructureAdminDto) {
+    return this.storageService.restoreDeletedStructureAdmin(body.itemId, body.newParentId);
   }
 
   @Post('update-item-tags')

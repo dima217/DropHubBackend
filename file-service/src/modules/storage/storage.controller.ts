@@ -44,6 +44,11 @@ export class StorageController {
     return this.storageService.getFullStorageStructure(data.storageId, data.userId);
   }
 
+  @MessagePattern('storage.getFullStructureAdmin')
+  async getFullStructureAdmin(@Payload() data: { storageId: string }) {
+    return this.storageService.getFullStorageStructureAdmin(data.storageId);
+  }
+
   @MessagePattern('storage.deleteItem')
   async deleteItem(@Payload() data: { storageId: string; itemId: string; userId: number }) {
     return this.storageService.deleteStorageItem(data);
@@ -62,6 +67,16 @@ export class StorageController {
   @MessagePattern('storage.getTrash')
   async getTrash(@Payload() data: { storageId: string; userId: number }) {
     return this.storageService.getTrashItems(data.storageId);
+  }
+
+  @MessagePattern('storage.restoreDeletedStructureAdmin')
+  async restoreDeletedStructureAdmin(
+    @Payload() data: { itemId: string; newParentId?: string | null },
+  ) {
+    return this.storageService.restoreDeletedStructureAdmin({
+      itemId: data.itemId,
+      newParentId: data.newParentId,
+    });
   }
 
   @MessagePattern('storage.getItemByToken')

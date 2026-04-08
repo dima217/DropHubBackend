@@ -31,6 +31,9 @@ export class StorageItem {
 
   @Prop({ type: Date, default: null })
   deletedAt?: Date | null;
+
+  @Prop({ type: Date, default: null })
+  permanentDeleteAt?: Date | null;
 }
 
 export const StorageItemSchema = SchemaFactory.createForClass(StorageItem);

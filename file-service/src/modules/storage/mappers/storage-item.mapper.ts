@@ -12,6 +12,7 @@ export interface BaseStorageItemDto {
   creatorId?: number;
   tags?: string[];
   deletedAt?: Date | null;
+  permanentDeleteAt?: Date | null;
 }
 
 export interface DirectoryStorageItemDto extends BaseStorageItemDto {
@@ -53,6 +54,7 @@ export class StorageItemMapper {
       creatorId: item.creatorId,
       tags: item.tags || [],
       deletedAt: item.deletedAt,
+      permanentDeleteAt: item.permanentDeleteAt,
     };
   }
 

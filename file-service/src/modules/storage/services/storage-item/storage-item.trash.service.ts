@@ -7,6 +7,8 @@ import { Types } from "mongoose";
 import { StorageItemRepository } from "./storage-item.repository";
 import { StorageItemTreeService } from "./storage-item.tree.service";
 
+const SOFT_DELETE_RETENTION_DAYS = 21;
+
 @Injectable()
 export class StorageItemTrashService {
   constructor(
@@ -22,7 +24,7 @@ export class StorageItemTrashService {
 
     await this.repo.updateMany(
       { _id: { $in: [rootId, ...childrenIds] } },
-      { $set: { deletedAt: now } }
+      { $set: { deletedAt: now, permanentDeleteAt: null } }
     );
   }
 
@@ -32,7 +34,7 @@ export class StorageItemTrashService {
       throw new NotFoundException("Item not found.");
     }
 
-    const update: any = { deletedAt: null };
+    const update: any = { deletedAt: null, permanentDeleteAt: null };
 
     if (newParentId !== undefined) {
       if (newParentId !== null) {
@@ -67,15 +69,46 @@ export class StorageItemTrashService {
     if (childrenIds.length > 0) {
       await this.repo.updateMany(
         { _id: { $in: childrenIds } },
-        { $set: { deletedAt: null } }
+        { $set: { deletedAt: null, permanentDeleteAt: null } }
       );
     }
   }
 
   async deletePermanent(itemId: string) {
+    const now = new Date();
+    const permanentDeleteAt = new Date(
+      now.getTime() + SOFT_DELETE_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    );
+    const item = await this.repo.findById(itemId);
+    if (!item) {
+      throw new NotFoundException("Item not found.");
+    }
+    if (!item.deletedAt) {
+      throw new BadRequestException(
+        "Item must be in trash before permanent deletion."
+      );
+    }
+
     const rootId = new Types.ObjectId(itemId);
     const childrenIds = await this.tree.getChildrenIdsRecursively(rootId);
 
-    await this.repo.deleteMany({ _id: { $in: [rootId, ...childrenIds] } });
+    await this.repo.updateMany(
+      { _id: { $in: [rootId, ...childrenIds] } },
+      {
+        $set: {
+          deletedAt: item.deletedAt ?? now,
+          permanentDeleteAt,
+        },
+      }
+    );
+  }
+
+  async hardDelete(itemId: string) {
+    const rootId = new Types.ObjectId(itemId);
+    const childrenIds = await this.tree.getChildrenIdsRecursively(rootId);
+    const allIds = [rootId, ...childrenIds];
+    const items = await this.repo.findLean({ _id: { $in: allIds } });
+    await this.repo.deleteMany({ _id: { $in: allIds } });
+    return items;
   }
 }

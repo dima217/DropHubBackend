@@ -35,6 +35,7 @@ export interface IStorageService {
   getStoragesByUserId(userId: number): Promise<any[]>;
   getStorageItemByToken(token: string): Promise<StorageItem & { children?: StorageItem[] }>;
   getFullStorageStructure(storageId: string, userId: number): Promise<any[]>;
+  getFullStorageStructureAdmin(storageId: string): Promise<any[]>;
   getStorageStructure(params: {
     storageId: string;
     parentId: string | null;
@@ -60,6 +61,15 @@ export interface IStorageService {
     newParentId?: string | null;
   }): Promise<{ success: boolean; itemId: string }>;
   getTrashItems(storageId: string): Promise<any[]>;
+  restoreDeletedStructureAdmin(params: {
+    itemId: string;
+    newParentId?: string | null;
+  }): Promise<{ success: boolean; itemId: string }>;
+  purgeStorageItemsPermanently(): Promise<{
+    purgedRoots: number;
+    purgedItems: number;
+    purgedFiles: number;
+  }>;
   updateStorageItemTags(
     storageId: string,
     itemId: string,

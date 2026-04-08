@@ -17,6 +17,9 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
 import { SearchModule } from './modules/search/search.module';
 import { AvatarModule } from '@application/avatar/avatar.module';
 import { ChatModule } from '@application/chat/chat.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ActivityLogInterceptor } from './common/interceptors/activity-log.interceptor';
+import { SupportModule } from './modules/support/support.module';
 
 @Module({
   imports: [
@@ -40,8 +43,15 @@ import { ChatModule } from '@application/chat/chat.module';
     SearchModule,
     AvatarModule,
     ChatModule,
+    SupportModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ActivityLogInterceptor,
+    },
+  ],
 })
 export class AppModule {}

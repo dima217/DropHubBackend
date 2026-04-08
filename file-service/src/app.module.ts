@@ -10,6 +10,7 @@ import { MongoConfigModule } from "./config/modules/mongo-config.module";
 import { configuration } from "./config/configuration";
 import { CacheModule } from "./cache/cache.module";
 import { AvatarModule } from "./modules/avatar/avatar.module";
+import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AvatarModule } from "./modules/avatar/avatar.module";
     }),
     MongoConfigModule,
     CacheModule,
+    ScheduleModule.forRoot(),
     PermissionClientModule,
     TokenClientModule,
     S3Module,
