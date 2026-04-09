@@ -50,7 +50,10 @@ export interface IFileService {
   getFileById(fileId: string): Promise<FileMeta>;
   getFileByUploadId(uploadId: string): Promise<any>;
   getExpiredFiles(beforeDate?: Date): Promise<any[]>;
-  deleteFilesCompletely(fileIds: string[], roomId?: string): Promise<void>;
+  deleteFilesCompletely(
+    fileIds: string[],
+    roomId?: string,
+  ): Promise<{ success: boolean }>;
   searchFiles(params: {
     roomIds: string[];
     query?: string;

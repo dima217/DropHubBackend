@@ -293,9 +293,10 @@ export class FileService implements IFileService {
 
   async deleteFilesCompletely(
     fileIds: string[],
-    roomId?: string
-  ): Promise<void> {
+    roomId?: string,
+  ): Promise<{ success: boolean }> {
     await this.hardDeleteFiles(fileIds, roomId);
+    return { success: true };
   }
 
   private async hardDeleteFiles(fileIds: string[], roomId?: string): Promise<void> {
