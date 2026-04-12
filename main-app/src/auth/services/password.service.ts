@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from '../../modules/user/services/user.service';
 import * as argon2 from 'argon2';
 import { VerifyCodeService } from '../modules/code/services/verify-code.service';
@@ -16,7 +21,13 @@ export class PasswordService {
     if (!user) {
       throw new NotFoundException('User not found...');
     }
-    const passwordMatch = await argon2.verify(oldPassword, newPassword);
+    if (user.isOAuthUser) {
+      throw new BadRequestException('Password change is not available for Google accounts');
+    }
+    if (!user.password) {
+      throw new BadRequestException('Password change is not available for this account');
+    }
+    const passwordMatch = await argon2.verify(user.password, oldPassword);
     if (!passwordMatch) {
       throw new UnauthorizedException('Wrong credentials');
     }
@@ -49,6 +60,9 @@ export class PasswordService {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new NotFoundException('User not found...');
+    }
+    if (user.isOAuthUser) {
+      throw new BadRequestException('Password reset is not available for Google accounts');
     }
 
     const isValid = await this.verifyCodeService.verifyCode(email, code, Code.Types.recovery);

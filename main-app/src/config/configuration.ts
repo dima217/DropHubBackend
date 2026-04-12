@@ -2,6 +2,16 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { AppConfig } from './configuration.interface';
 
+/** Web + Android + iOS OAuth client IDs (must match `aud` in the ID token). Env: GOOGLE_ID_TOKEN_AUDIENCES or fallback GOOGLE_CLIENT_ID */
+function parseGoogleIdTokenAudiences(): string[] {
+  const raw =
+    process.env.GOOGLE_ID_TOKEN_AUDIENCES ?? process.env.GOOGLE_CLIENT_ID ?? '';
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export const configuration = (): AppConfig => {
   const config = plainToInstance(AppConfig, {
     environment: process.env.NODE_ENV || 'development',
@@ -36,6 +46,12 @@ export const configuration = (): AppConfig => {
       from: process.env.MAIL_FROM,
       secure: process.env.MAIL_SECURE,
       password: process.env.MAIL_PASSWORD,
+    },
+
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      idTokenAudiences: parseGoogleIdTokenAudiences(),
     },
   });
 

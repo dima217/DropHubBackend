@@ -1,29 +1,51 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/**
+ * Browser-only OAuth2 redirect flow (Passport). Mobile apps should call POST /auth/google/mobile
+ * with the ID token from Google Sign-In SDK instead.
+ */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { Strategy } from 'passport-google-oauth20';
+import { AuthService } from '../services/auth.service';
+import { UserRole } from 'src/modules/user/entities/user.entity';
+import { Profile as UserProfile } from 'src/modules/user/entities/profile.entity';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly authService: AuthService,
+  ) {
     super({
-      clientID: configService.get('GOOGLE_CLIENT_ID') || '',
-      clientSecret: configService.get('GOOGLE_CLIENT_SECRET') || '',
-      callbackURL: configService.get('GOOGLE_CALLBACK_URL'),
+      clientID: configService.get<string>('google.clientId') ?? '',
+      clientSecret: configService.get<string>('google.clientSecret') ?? '',
+      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL'),
       scope: ['email', 'profile'],
     });
   }
-  validate(accessToken: string, refreshToken: string, profile: any, done: VerifyCallback): any {
-    const { name, emails, photos } = profile;
-    const user = {
-      email: emails[0].value,
-      firstName: name.givenName,
-      picture: photos[0].value,
-      accessToken,
-    };
-    done(null, user);
+
+  async validate(
+    _accessToken: string,
+    _refreshToken: string,
+    profile: {
+      emails?: { value: string }[];
+      name?: { givenName?: string; familyName?: string };
+      displayName?: string;
+      photos?: { value: string }[];
+    },
+  ): Promise<{ id: number; profile: UserProfile; role: UserRole }> {
+    const email = profile.emails?.[0]?.value;
+    const firstName =
+      profile.name?.givenName?.trim() ||
+      profile.displayName?.trim() ||
+      profile.name?.familyName?.trim() ||
+      '';
+    const avatarUrl = profile.photos?.[0]?.value ?? null;
+
+    return this.authService.validateGoogleProfile({
+      email: email ?? '',
+      firstName,
+      avatarUrl,
+    });
   }
 }

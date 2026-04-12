@@ -27,6 +27,7 @@ import { SendCodeProvider } from '../modules/code/services/send.code.provider';
 import { VerifyCodeService } from '../modules/code/services/verify-code.service';
 import { Code } from '../modules/code/entity/code.entity';
 import { ResetPasswordByCodeDto } from '../dto/reset-password-by-code.dto';
+import { GoogleMobileSignInDto } from '../dto/google-mobile-sign-in.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -194,11 +195,37 @@ export class AuthController {
     return payload;
   }
 
+  @Post('google/mobile')
+  @ApiOperation({
+    summary: 'Google Sign-In (mobile)',
+    description:
+      'Accepts a Google **ID token** from native Google Sign-In (Android/iOS). Verifies `aud` against configured client IDs, then issues app access/refresh tokens. Send header `x-client-type: mobile-app` for JSON-only tokens without cookies.',
+  })
+  @ApiBody({ type: GoogleMobileSignInDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Tokens issued (shape matches /auth/login — cookies for browser, full body for mobile)',
+  })
+  @ApiResponse({ status: 401, description: 'Invalid ID token or misconfigured audiences' })
+  async googleMobile(
+    @Req() request: Request,
+    @Res() response: Response,
+    @Body() dto: GoogleMobileSignInDto,
+  ) {
+    const { id, profile } = await this.authService.signInWithGoogleIdToken(dto.idToken);
+    const tokens = await this.authService.login(id);
+    return this.authService.sendAuthResponse(request, response, {
+      ...tokens,
+      user: { profile },
+    });
+  }
+
   @Get('google')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({
-    summary: 'Initiate Google OAuth',
-    description: 'Redirects user to Google OAuth consent screen for authentication.',
+    summary: 'Initiate Google OAuth (browser only)',
+    description:
+      'Redirects to Google consent screen. For Android/iOS use POST /auth/google/mobile with the ID token from the native SDK.',
   })
   @ApiResponse({ status: 302, description: 'Redirects to Google OAuth' })
   async googleAuth() {}
@@ -208,19 +235,30 @@ export class AuthController {
   @ApiOperation({
     summary: 'Google OAuth callback',
     description:
-      'Handles Google OAuth callback. Creates or finds user and redirects to frontend with access token.',
+      'Web: sets refresh cookie and redirects to the SPA with accessToken in query. Mobile: returns JSON with accessToken and refreshToken (use header x-client-type: mobile-app, or query client=mobile — Google redirect often omits custom headers).',
   })
-  @ApiResponse({ status: 302, description: 'Redirects to frontend callback URL with access token' })
+  @ApiResponse({ status: 200, description: 'Mobile client: tokens in JSON body' })
+  @ApiResponse({ status: 302, description: 'Web: redirect to frontend with access token in query' })
   @ApiResponse({ status: 401, description: 'OAuth authentication failed' })
-  async googleAuthRedirect(@Req() req, @Res() res: Response) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const { refreshToken, accessToken } = await this.authService.findOrCreateUser(req.user);
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const user = req.user as { id: number };
+    const { refreshToken, accessToken } = await this.authService.login(user.id);
+
+    const isMobileApp =
+      req.headers['x-client-type'] === 'mobile-app' ||
+      req.query['client'] === 'mobile';
+
+    if (isMobileApp) {
+      return res.status(200).json({ accessToken, refreshToken });
+    }
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
+      sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    res.redirect(`http://localhost:3000/auth/callback?token=${accessToken}`);
+    return res.redirect(`http://localhost:3000/auth/callback?token=${accessToken}`);
   }
 
   @Post('check-email')

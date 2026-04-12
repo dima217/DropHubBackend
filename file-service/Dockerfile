@@ -1,11 +1,15 @@
-FROM node:20-bookworm-slim AS builder
+FROM node:20-bookworm-slim AS deps
 
 WORKDIR /app
-
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --pure-lockfile
 
+
+FROM node:20-bookworm-slim AS builder
+
+WORKDIR /app
 COPY . .
+COPY --from=deps /app/node_modules ./node_modules
 RUN yarn build
 
 
@@ -19,10 +23,11 @@ RUN sed -i 's/\r$//' /usr/local/bin/install-conversion-binaries.sh && \
     /bin/sh /usr/local/bin/install-conversion-binaries.sh
 
 COPY package.json yarn.lock ./
-RUN yarn install --production --frozen-lockfile --pure-lockfile
+COPY --from=deps /app/node_modules ./node_modules
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/default-avatars ./default-avatars
+
 
 RUN groupadd --gid 1001 nodejs && \
     useradd --uid 1001 --gid 1001 --system --create-home --home-dir /home/nodejs --shell /usr/sbin/nologin nodejs && \

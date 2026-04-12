@@ -1,4 +1,11 @@
-import { IsString, IsInt, ValidateNested, IsBoolean, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  ValidateNested,
+  IsBoolean,
+  IsOptional,
+  IsArray,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PostgresConfig {
@@ -69,6 +76,19 @@ export class MailConfig {
   password: string;
 }
 
+export class GoogleConfig {
+  @IsString()
+  clientId: string;
+
+  @IsString()
+  clientSecret: string;
+
+  /** OAuth client IDs allowed as `aud` in Google ID tokens (web + Android + iOS), comma-separated in env */
+  @IsArray()
+  @IsString({ each: true })
+  idTokenAudiences: string[];
+} 
+
 export class AppConfig {
   @IsString()
   environment: string;
@@ -91,4 +111,8 @@ export class AppConfig {
   @ValidateNested()
   @Type(() => SwaggerConfig)
   swagger: SwaggerConfig;
+
+  @ValidateNested()
+  @Type(() => GoogleConfig)
+  google: GoogleConfig;
 }

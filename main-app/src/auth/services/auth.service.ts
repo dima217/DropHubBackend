@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuthPayloadDto } from '../dto/auth.dto';
 import { UsersService } from '../../modules/user/services/user.service';
 import * as argon2 from 'argon2';
@@ -9,6 +15,7 @@ import { ProfileService } from 'src/modules/user/services/profile.service';
 import { TokenService } from './token.service';
 import { AvatarClientService } from '@application/file-client/services/auth/avatar-client.service';
 import { RequestEmailCodeDto } from '../dto/request-email-code.dto';
+import { GoogleIdTokenService } from './google-id-token.service';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +27,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly avatarService: AvatarClientService,
     private readonly dataSource: DataSource,
+    private readonly googleIdTokenService: GoogleIdTokenService,
   ) {}
 
   sendAuthResponse(
@@ -71,6 +79,10 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
+    if (findUser.isOAuthUser || !findUser.password) {
+      return null;
+    }
+
     const passwordIsMatch = await argon2.verify(findUser.password, authPayloadDto.password);
 
     if (passwordIsMatch) {
@@ -99,10 +111,14 @@ export class AuthService {
 
   async registerUser(dto: {
     email: string;
-    password: string;
+    password?: string;
     firstName: string;
     customAvatarNumber?: number;
   }) {
+    if (!dto.password?.trim()) {
+      throw new BadRequestException('Password is required for email registration');
+    }
+
     const userData = {
       ...dto,
       password: dto.password,
@@ -174,22 +190,82 @@ export class AuthService {
     };
   }
 
-  async findOrCreateUser(dto: { email: string; firstName: string; picture?: string }) {
-    const userData = {
-      ...dto,
+  /** Native mobile: verify Google ID token, then same user pipeline as web OAuth (no Google tokens stored). */
+  async signInWithGoogleIdToken(idToken: string): Promise<{
+    id: number;
+    profile: User['profile'];
+    role: UserRole;
+  }> {
+    const google = await this.googleIdTokenService.verifyAndExtractProfile(idToken);
+    return this.validateGoogleProfile({
+      email: google.email,
+      firstName: google.firstName,
+      avatarUrl: google.avatarUrl,
+    });
+  }
+
+  /**
+   * Google OAuth: finds user by email or creates one. Does not persist Google tokens.
+   * JWT/refresh are issued in AuthController after this (via login()).
+   */
+  async validateGoogleProfile(payload: {
+    email: string;
+    firstName: string;
+    avatarUrl?: string | null;
+  }): Promise<{ id: number; profile: User['profile']; role: UserRole }> {
+    const email = payload.email?.trim().toLowerCase();
+    if (!email) {
+      throw new BadRequestException('Google account has no email');
+    }
+
+    const existing = await this.usersService.findByEmail(email);
+    if (existing) {
+      if (existing.isBanned) {
+        throw new ForbiddenException('Account is banned');
+      }
+      if (existing.isOAuthUser && payload.avatarUrl && existing.profile?.id) {
+        await this.profileService.updateProfile(existing.profile.id, {
+          avatarUrl: payload.avatarUrl,
+        });
+        existing.profile.avatarUrl = payload.avatarUrl;
+      }
+      return {
+        id: existing.id,
+        profile: existing.profile,
+        role: existing.role,
+      };
+    }
+
+    const firstName = await this.pickUniqueDisplayName(payload.firstName, email);
+    const user = await this.createUserWithProfile({
+      email,
+      firstName,
       role: UserRole.USER,
       isOAuthUser: true,
-    };
-    const user = await this.createUserWithProfile(userData);
+      avatarUrl: payload.avatarUrl ?? null,
+    });
 
-    const accessToken = this.tokenService.generateAccessToken(user.id);
-    const refreshToken = this.tokenService.generateRefreshToken(user.id);
-    await this.usersService.updateRefreshToken(user.id, refreshToken);
+    const full = await this.usersService.getUserById(user.id);
+    if (!full?.profile) {
+      throw new BadRequestException('Failed to load user profile after Google sign-in');
+    }
 
     return {
-      accessToken,
-      refreshToken,
+      id: full.id,
+      profile: full.profile,
+      role: full.role,
     };
+  }
+
+  private async pickUniqueDisplayName(base: string, email: string): Promise<string> {
+    const fromEmail = email.split('@')[0] || 'user';
+    let candidate = (base?.trim() || fromEmail).slice(0, 255) || 'user';
+    let n = 0;
+    while (await this.profileService.findByFirstName(candidate)) {
+      n += 1;
+      candidate = `${base?.trim() || fromEmail}_${n}`.slice(0, 255);
+    }
+    return candidate;
   }
 
   private async createUserWithProfile(params: {
@@ -197,22 +273,24 @@ export class AuthService {
     password?: string;
     firstName: string;
     role: UserRole;
-    avatarUrl?: string;
+    avatarUrl?: string | null;
     isOAuthUser: boolean;
   }): Promise<User> {
     return this.dataSource.transaction(async (manager) => {
       const profile = await this.profileService.createProfileTransactional(
         {
           firstName: params.firstName,
-          avatarUrl: null,
+          avatarUrl: params.avatarUrl ?? null,
         },
         manager,
       );
 
+      const passwordValue = params.password ? await argon2.hash(params.password) : null;
+
       const user = await this.usersService.createUserTransactional(
         {
           email: params.email,
-          password: params.password ? await argon2.hash(params.password) : undefined,
+          password: passwordValue,
           role: params.role,
           isOAuthUser: params.isOAuthUser,
           profile,

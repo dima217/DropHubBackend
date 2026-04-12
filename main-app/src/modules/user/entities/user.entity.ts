@@ -31,9 +31,9 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @ApiProperty({ description: 'User password' })
-  @Column()
-  password: string;
+  @ApiProperty({ description: 'User password (null for Google OAuth-only accounts)' })
+  @Column({ type: 'varchar', nullable: true })
+  password: string | null;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   @IsEnum(UserRole)
