@@ -240,6 +240,20 @@ export class FileService implements IFileService {
     );
   }
 
+  async sumFilesSizeByIds(fileIds: string[]): Promise<number> {
+    if (!fileIds.length) {
+      return 0;
+    }
+    const unique = [...new Set(fileIds)];
+    const docs = await this.fileModel
+      .find({ _id: { $in: unique } })
+      .select('size')
+      .lean()
+      .exec();
+    const byId = new Map(docs.map((d) => [String(d._id), Number(d.size) || 0]));
+    return fileIds.reduce((sum, id) => sum + (byId.get(id) ?? 0), 0);
+  }
+
   async getFileById(fileId: string) {
     const cacheKey = `file:meta:${fileId}`;
 

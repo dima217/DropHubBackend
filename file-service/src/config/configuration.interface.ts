@@ -56,6 +56,11 @@ export class AppConfig {
   @IsString()
   environment!: string;
 
+  /** Default max size in bytes for a new user storage (override with STORAGE_DEFAULT_MAX_BYTES). */
+  @IsInt()
+  @Type(() => Number)
+  storageDefaultMaxBytes!: number;
+
   @IsInt()
   @Type(() => Number)
   port!: number;

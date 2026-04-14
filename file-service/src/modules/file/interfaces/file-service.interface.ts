@@ -48,6 +48,8 @@ export interface IFileService {
     params: AuthenticatedGettingFilesByRoomParams
   ): Promise<RoomWithFiles>;
   getFileById(fileId: string): Promise<FileMeta>;
+  /** Sum of `size` for each id in order (missing files count as 0). */
+  sumFilesSizeByIds(fileIds: string[]): Promise<number>;
   getFileByUploadId(uploadId: string): Promise<any>;
   getExpiredFiles(beforeDate?: Date): Promise<any[]>;
   deleteFilesCompletely(

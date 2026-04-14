@@ -1,9 +1,8 @@
-import { BadRequestException, forwardRef, NotFoundException } from "@nestjs/common";
+import { BadRequestException, forwardRef, Inject, NotFoundException } from "@nestjs/common";
 import { Room, RoomDocument } from "../../room/schemas/room.schema";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { FileDocument } from "@/modules/file/schemas/file.schema";
-import { Inject } from "@nestjs/common";
 import { FILE_SERVICE_TOKEN, type IFileService } from "@/modules/file/interfaces";
 import type { IStorageService } from "@/modules/storage/interfaces";
 import { STORAGE_SERVICE_TOKEN } from "@/modules/storage/interfaces";
@@ -13,7 +12,7 @@ export class ArchiveRoomService {
     @InjectModel(Room.name) private readonly roomModel: Model<RoomDocument>,
     @Inject(forwardRef(() => STORAGE_SERVICE_TOKEN))
     private readonly storageService: IStorageService,
-    @Inject(forwardRef(() => FILE_SERVICE_TOKEN)) 
+    @Inject(forwardRef(() => FILE_SERVICE_TOKEN))
     private readonly fileService: IFileService,
   ) {}
 
@@ -58,6 +57,13 @@ export class ArchiveRoomService {
     if (filesToArchive.length === 0) {
       throw new BadRequestException("No valid files to archive.");
     }
+
+    const totalBytes = filesToArchive.reduce(
+      (sum, file) => sum + (Number((file as { size?: number }).size) || 0),
+      0
+    );
+    await this.storageService.assertCanAddBytes(storageId, totalBytes);
+
     const roomFolderName = `Room ${roomId.substring(0, 8)}`;
 
     const folderItem = await this.storageService.createItemInStorage({

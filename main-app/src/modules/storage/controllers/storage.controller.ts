@@ -7,6 +7,7 @@ import {
   BadRequestException,
   Get,
   Param,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -43,6 +44,19 @@ import { ResourceType, AccessRole } from 'src/modules/permission/entities/permis
 import { RemoveStorageTagsDto } from '@application/user/dto/remove-storage.tags.dto';
 import { ArchiveRoomDto } from '@application/file/dto/archive-room.dto';
 import { RestoreDeletedStructureAdminDto } from '../dto/admin/restore-deleted-structure-admin.dto';
+import type { UserStorageDto } from '../../file-client/types/storage';
+import {
+  FileServiceErrorCode,
+  getFileServiceRpcPayload,
+} from '@application/file/exceptions/file-rcp.error';
+
+async function getPrimaryUserStorage(
+  storageService: StorageService,
+  userId: number,
+): Promise<(UserStorageDto & { userRole?: string }) | undefined> {
+  const storages = await storageService.getStoragesByUserId(userId);
+  return storages[0];
+}
 
 @ApiTags('Storage')
 @ApiExtraModels(StorageItemResponseDto, StorageResponseDto, DeleteItemResponseDto)
@@ -54,24 +68,36 @@ export class UserStorageController {
     private readonly storageService: StorageService,
   ) {}
 
-  @Post('/')
+  @Get()
   @ApiOperation({
-    summary: 'Get all storages for the current user',
+    summary: 'Get primary storage for the current user (REST)',
     description:
-      'Retrieves a list of all storage instances that the authenticated user has access to. Returns storages based on user permissions.',
+      'Returns the first storage the user can access, including `usedBytes` and `maxBytes` for quota UI. Prefer this for GET /storage.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Successfully retrieved list of user storages',
-    schema: {
-      type: 'array',
-      items: { $ref: getSchemaPath(StorageResponseDto) },
-    },
+    description: 'Primary user storage (or empty response if none)',
+    schema: { $ref: getSchemaPath(StorageResponseDto) },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
+  async getUserStoragesGet(@Req() req: RequestWithUser) {
+    return getPrimaryUserStorage(this.storageService, req.user.id);
+  }
+
+  @Post('/')
+  @ApiOperation({
+    summary: 'Get primary storage for the current user (legacy POST)',
+    description:
+      'Same as GET /storage: returns the first storage the user can access, including quota fields.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Primary user storage including quota fields',
+    schema: { $ref: getSchemaPath(StorageResponseDto) },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
   async getUserStorages(@Req() req: RequestWithUser) {
-    const storages = await this.storageService.getStoragesByUserId(req.user.id);
-    return storages[0];
+    return getPrimaryUserStorage(this.storageService, req.user.id);
   }
 
   @Post('create')
@@ -641,12 +667,20 @@ export class UserStorageController {
     if (!body.storageId || !body.itemId) {
       throw new BadRequestException('Both Storage ID and Item ID are required.');
     }
-    return await this.storageClient.copyStorageItem({
-      storageId: body.storageId,
-      itemId: body.itemId,
-      targetParentId: body.targetParentId ?? null,
-      userId: req.user.id,
-    });
+    try {
+      return await this.storageClient.copyStorageItem({
+        storageId: body.storageId,
+        itemId: body.itemId,
+        targetParentId: body.targetParentId ?? null,
+        userId: req.user.id,
+      });
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   @Post('archive-room')

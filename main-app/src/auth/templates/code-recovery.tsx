@@ -41,7 +41,7 @@ export const CodeRecoveryEmail = ({
 
             <Section style={codeBox}>
               <Text style={codeHint}>Your recovery code:</Text>
-              <Text style={code} id="verification-code">
+              <Text style={verificationCodeStyle} id="verification-code">
                 {code}
               </Text>
               <Text style={copyHint}>Tap the code above to select and copy it</Text>
@@ -151,7 +151,7 @@ const codeHint = {
   letterSpacing: '1px',
 };
 
-const code = {
+const verificationCodeStyle = {
   fontSize: '42px',
   fontWeight: 'bold',
   color: '#000000',

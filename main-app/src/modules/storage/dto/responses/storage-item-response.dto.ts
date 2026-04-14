@@ -179,6 +179,13 @@ export class StorageResponseDto {
 
   @ApiProperty({ description: 'Maximum storage size in bytes', example: 1073741824 })
   maxBytes: number;
+
+  @ApiProperty({
+    description:
+      'Current total size of all non-deleted files in this storage (bytes). Same semantics as quota enforcement.',
+    example: 52428800,
+  })
+  usedBytes: number;
 }
 
 export class DeleteItemResponseDto {

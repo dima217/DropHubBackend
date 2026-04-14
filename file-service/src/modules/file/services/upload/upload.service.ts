@@ -98,6 +98,10 @@ export class UploadService implements IUploadService {
             mimeType
           );
 
+          if (params.storageId) {
+            await this.storageService.assertCanAddBytes(params.storageId, fileSize);
+          }
+
           const uploadMeta = await this.uploadSessionRepository.create({
             key,
             originalName,
@@ -141,6 +145,13 @@ export class UploadService implements IUploadService {
           code: "FILE_NOT_UPLOADED",
           message: "File was not uploaded to S3",
         });
+      }
+
+      if (uploadSession.storageId) {
+        await this.storageService.assertCanAddBytes(
+          uploadSession.storageId,
+          uploadSession.size,
+        );
       }
 
       if (params.parentId && resourceId) {

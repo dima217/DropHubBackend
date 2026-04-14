@@ -9,7 +9,8 @@ export class UserStorage {
   @Prop({ type: Date, default: () => new Date() })
   createdAt: Date;
 
-  @Prop({ type: Number, default: 1024 })
+  /** Maximum total file payload per storage (bytes). New storages use STORAGE_DEFAULT_MAX_BYTES from env. */
+  @Prop({ type: Number, default: () => 1024 * 1024 * 1024 })
   maxBytes: number;
 
   @Prop({ type: [String], default: [] })

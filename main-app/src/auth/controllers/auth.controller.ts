@@ -212,11 +212,12 @@ export class AuthController {
     @Res() response: Response,
     @Body() dto: GoogleMobileSignInDto,
   ) {
-    const { id, profile } = await this.authService.signInWithGoogleIdToken(dto.idToken);
+    const { id, profile, existing } = await this.authService.signInWithGoogleIdToken(dto.idToken);
     const tokens = await this.authService.login(id);
     return this.authService.sendAuthResponse(request, response, {
       ...tokens,
       user: { profile },
+      existing,
     });
   }
 

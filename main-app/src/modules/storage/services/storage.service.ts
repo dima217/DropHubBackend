@@ -1,10 +1,14 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, PayloadTooLargeException } from '@nestjs/common';
 import { StorageClientService } from '../../file-client/services/storage-client.service';
 import { UniversalPermissionService } from '../../permission/services/permission.service';
 import { ResourceType, AccessRole } from '../../permission/entities/permission.entity';
 import { UsersService } from '../../user/services/user.service';
 import { StorageItemDto } from '../../file-client/types/storage';
 import { RoomClientService } from '@application/file-client/services/room-client.service';
+import {
+  FileServiceErrorCode,
+  getFileServiceRpcPayload,
+} from '@application/file/exceptions/file-rcp.error';
 
 @Injectable()
 export class StorageService {
@@ -53,16 +57,24 @@ export class StorageService {
       AccessRole.WRITE,
     ]);
 
-    const item = await this.storageClient.createStorageItem({
-      storageId,
-      userId,
-      name,
-      isDirectory,
-      parentId,
-      fileId,
-    });
+    try {
+      const item = await this.storageClient.createStorageItem({
+        storageId,
+        userId,
+        name,
+        isDirectory,
+        parentId,
+        fileId,
+      });
 
-    return { success: true, item };
+      return { success: true, item };
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   async getStoragesByUserId(userId: number) {
@@ -130,15 +142,21 @@ export class StorageService {
       AccessRole.WRITE,
     ]);
 
-    const result = await this.roomClient.archiveRoom({
-      roomId,
-      userId,
-      storageId,
-      parentId,
-      fileIds,
-    });
-
-    return result;
+    try {
+      return await this.roomClient.archiveRoom({
+        roomId,
+        userId,
+        storageId,
+        parentId,
+        fileIds,
+      });
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   async restoreDeletedStructureAdmin(itemId: string, newParentId?: string | null) {
@@ -155,8 +173,12 @@ export class StorageService {
       userId,
       ResourceType.STORAGE,
     );
-    const adminStoragePermissions = permissions.filter((permission) => permission.role === AccessRole.ADMIN);
-    const storageIds = Array.from(new Set(adminStoragePermissions.map((permission) => permission.resourceId)));
+    const adminStoragePermissions = permissions.filter(
+      (permission) => permission.role === AccessRole.ADMIN,
+    );
+    const storageIds = Array.from(
+      new Set(adminStoragePermissions.map((permission) => permission.resourceId)),
+    );
     const storages = storageIds.length ? await this.storageClient.getStoragesByIds(storageIds) : [];
 
     const storagesWithItems = await Promise.all(

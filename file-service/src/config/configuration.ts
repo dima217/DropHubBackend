@@ -6,6 +6,10 @@ import { AppConfig } from './configuration.interface';
 export const configuration = (): AppConfig => {
   const config = plainToInstance(AppConfig, {
     environment: process.env.NODE_ENV || 'development',
+    storageDefaultMaxBytes: parseInt(
+      process.env.STORAGE_DEFAULT_MAX_BYTES || String(1024 * 1024 * 1024),
+      10,
+    ),
     port: parseInt(process.env.PORT || '3000', 10),
     mongo: {
       uri: process.env.MONGO_URL || '',

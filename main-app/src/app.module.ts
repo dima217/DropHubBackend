@@ -26,7 +26,7 @@ import { SupportModule } from './modules/support/support.module';
     ConfigModule.forRoot<AppConfig>({
       load: [configuration],
       isGlobal: true,
-      //envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
     }),
 
     DatabaseModule,

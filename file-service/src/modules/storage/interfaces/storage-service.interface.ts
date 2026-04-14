@@ -8,7 +8,10 @@ export interface IStorageService {
     items: any[];
     createdAt: string;
     maxBytes: number;
+    usedBytes: number;
   }>;
+  /** Throws RpcException with code STORAGE_QUOTA_EXCEEDED if there is not enough free space. */
+  assertCanAddBytes(storageId: string, additionalBytes: number): Promise<void>;
   createItemInStorage(params: {
     storageId: string;
     name: string;
@@ -23,6 +26,7 @@ export interface IStorageService {
     items: any[];
     createdAt: string;
     maxBytes: number;
+    usedBytes: number;
   } | null>;
   getStoragesByIds(storageIds: string[]): Promise<
     Array<{
@@ -30,6 +34,7 @@ export interface IStorageService {
       tags: string[];
       createdAt: string;
       maxBytes: number;
+      usedBytes: number;
     }>
   >;
   getStoragesByUserId(userId: number): Promise<any[]>;

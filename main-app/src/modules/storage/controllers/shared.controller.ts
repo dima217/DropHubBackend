@@ -1,4 +1,12 @@
-import { Body, Controller, NotFoundException, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  NotFoundException,
+  PayloadTooLargeException,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetSharedItemsDto } from '@application/user/dto/shared/get-shared.items.dto';
 import { SharedService } from '../services/shared.service';
@@ -14,6 +22,11 @@ import { GetItemStructureDto } from '../dto/shared/get-item.structure.dto';
 import { StorageClientService } from '@application/file-client';
 import { GetSharedItemParticipantsDto } from '../dto/shared/get-shared.item.participants.dto';
 import { CreateStorageItemDto } from '../dto/create-storage-item.dto';
+import { PushEventsService } from '@application/push/push-events.service';
+import {
+  FileServiceErrorCode,
+  getFileServiceRpcPayload,
+} from '@application/file/exceptions/file-rcp.error';
 
 @Controller('shared')
 @ApiTags('Shared')
@@ -22,6 +35,7 @@ export class SharedController {
     private readonly sharedService: SharedService,
     private readonly permissionService: UniversalPermissionService,
     private readonly storageClient: StorageClientService,
+    private readonly pushEvents: PushEventsService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -71,14 +85,22 @@ export class SharedController {
     @Req() req: RequestWithUser,
     @Body() createSharedItemDto: CreateStorageItemDto,
   ) {
-    return this.storageClient.createStorageItem({
-      userId: req.user.id,
-      storageId: createSharedItemDto.storageId,
-      name: createSharedItemDto.name,
-      isDirectory: createSharedItemDto.isDirectory,
-      parentId: createSharedItemDto.parentId ?? null,
-      fileId: createSharedItemDto.fileId ?? null,
-    });
+    try {
+      return await this.storageClient.createStorageItem({
+        userId: req.user.id,
+        storageId: createSharedItemDto.storageId,
+        name: createSharedItemDto.name,
+        isDirectory: createSharedItemDto.isDirectory,
+        parentId: createSharedItemDto.parentId ?? null,
+        fileId: createSharedItemDto.fileId ?? null,
+      });
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   @Post('/grant-permission')
@@ -108,13 +130,19 @@ export class SharedController {
     if (!isItemInStorage) {
       throw new NotFoundException('Item not found in storage');
     }
-    return this.permissionService.grantSharedPermission({
+    const permission = await this.permissionService.grantSharedPermission({
       actingUserId: req.user.id,
       targetUserId: grantPermissionDto.targetUserId,
       resourceId: grantPermissionDto.resourceId,
       resourceType: ResourceType.SHARED,
       role: grantPermissionDto.role,
     });
+    void this.pushEvents.notifySharedAccessGranted(
+      req.user.id,
+      grantPermissionDto.targetUserId,
+      grantPermissionDto.resourceId,
+    );
+    return permission;
   }
 
   @Post('/revoke-permission')

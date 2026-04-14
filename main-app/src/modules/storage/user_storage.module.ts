@@ -7,9 +7,10 @@ import { PermissionModule } from '@application/permission/permission.module';
 import { UserModule } from '@application/user/user.module';
 import { SharedService } from './services/shared.service';
 import { SharedController } from './controllers/shared.controller';
+import { PushModule } from '../push/push.module';
 
 @Module({
-  imports: [FileClientModule, AuthModule, PermissionModule, UserModule],
+  imports: [FileClientModule, AuthModule, PermissionModule, UserModule, PushModule],
   controllers: [UserStorageController, PublicStorageController, SharedController],
   providers: [StorageService, SharedService],
 })

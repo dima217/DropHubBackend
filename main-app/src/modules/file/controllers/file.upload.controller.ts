@@ -8,6 +8,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -23,9 +24,14 @@ import { PermissionGuard } from 'src/auth/guards/permission.guard';
 import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { UploadConfirmDto } from '../dto/upload/upload.confirm.dto';
-import { FileServiceRpcError, FileServiceErrorCode } from '../exceptions/file-rcp.error';
+import {
+  FileServiceRpcError,
+  FileServiceErrorCode,
+  getFileServiceRpcPayload,
+} from '../exceptions/file-rcp.error';
 import { RoomsGateway } from '@application/room/gateway/room.gateway';
 import { UploadConfirmSharedDto } from '../dto/upload/upload.confirm-shared.dto';
+import { PushEventsService } from '@application/push/push-events.service';
 
 @ApiTags('File Upload')
 @Controller('/upload')
@@ -33,6 +39,7 @@ export class FileUploadController {
   constructor(
     private readonly fileClient: FileClientService,
     private readonly roomGateway: RoomsGateway,
+    private readonly pushEvents: PushEventsService,
   ) {}
   @Post('auth/room/init')
   @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -96,6 +103,7 @@ export class FileUploadController {
       });
       if (confirmData.roomId) {
         this.roomGateway.sendRoomUpdate(confirmData.roomId);
+        void this.pushEvents.notifyRoomFileUploaded(confirmData.roomId, req.user.id);
       }
       return confirmResult;
     } catch (err) {
@@ -149,8 +157,16 @@ export class FileUploadController {
       userId: req.user.id,
     };
 
-    const result = await this.fileClient.initUpload(uploadData);
-    return { success: true, result };
+    try {
+      const result = await this.fileClient.initUpload(uploadData);
+      return { success: true, result };
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   @Post('auth/storage/confirm')
@@ -180,11 +196,19 @@ export class FileUploadController {
     },
   })
   async confirmUploadToStorage(@Body() confirmData: UploadConfirmDto, @Req() req: RequestWithUser) {
-    const result = await this.fileClient.confirmUpload({
-      ...confirmData,
-      userId: req.user.id,
-    });
-    return result;
+    try {
+      const result = await this.fileClient.confirmUpload({
+        ...confirmData,
+        userId: req.user.id,
+      });
+      return result;
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   @Post('auth/storage/init-shared')
@@ -216,8 +240,16 @@ export class FileUploadController {
       uploaderIp: req.userIp,
       userId: req.user.id,
     };
-    const result = await this.fileClient.initUpload(uploadData);
-    return { success: true, result };
+    try {
+      const result = await this.fileClient.initUpload(uploadData);
+      return { success: true, result };
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   @Post('auth/storage/confirm-shared')
@@ -249,11 +281,26 @@ export class FileUploadController {
     @Body() confirmData: UploadConfirmSharedDto,
     @Req() req: RequestWithUser,
   ) {
-    const result = await this.fileClient.confirmUpload({
-      ...confirmData,
-      userId: req.user.id,
-    });
-    return result;
+    try {
+      const result = await this.fileClient.confirmUpload({
+        ...confirmData,
+        userId: req.user.id,
+      });
+      if (confirmData.storageId && confirmData.resourceId) {
+        void this.pushEvents.notifySharedFolderUpload(
+          confirmData.storageId,
+          confirmData.resourceId,
+          req.user.id,
+        );
+      }
+      return result;
+    } catch (err) {
+      const rpc = getFileServiceRpcPayload(err);
+      if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+        throw new PayloadTooLargeException(rpc.message ?? 'Storage quota exceeded');
+      }
+      throw err;
+    }
   }
 
   @Post('public')

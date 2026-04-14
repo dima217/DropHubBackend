@@ -2,12 +2,13 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  UnauthorizedException,
   Inject,
   forwardRef,
   NotFoundException,
   Logger,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { RpcException } from "@nestjs/microservices";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 
@@ -26,6 +27,7 @@ import type { IStorageService } from "../../interfaces/storage-service.interface
 
 import type { IFileService } from "../../../file/interfaces";
 import { FILE_SERVICE_TOKEN } from "../../../file/interfaces";
+import type { AppConfig } from "../../../../config/configuration.interface";
 
 import {
   StorageItemMapper,
@@ -87,15 +89,84 @@ export class StorageService implements IStorageService {
 
     private readonly tokenService: TokenClientService,
 
+    private readonly configService: ConfigService<AppConfig, true>,
+
     @Inject(forwardRef(() => FILE_SERVICE_TOKEN))
     private readonly fileService: IFileService
   ) {}
   
   private readonly logger = new Logger(StorageService.name);
 
+  private getDefaultMaxBytes(): number {
+    return this.configService.get<number>("storageDefaultMaxBytes", 1024 * 1024 * 1024);
+  }
+
+  private resolveMaxBytes(storage: { maxBytes?: number } | null | undefined): number {
+    const fallback = this.getDefaultMaxBytes();
+    if (storage == null || storage.maxBytes == null || storage.maxBytes <= 0) {
+      return fallback;
+    }
+    return storage.maxBytes;
+  }
+
+  private async getUsedBytes(storageId: string): Promise<number> {
+    const items = await this.itemTree.getAllItemsByStorageId(storageId);
+    const fileIds = items
+      .filter((i) => !i.isDirectory && i.fileId)
+      .map((i) => i.fileId!.toString());
+    return this.fileService.sumFilesSizeByIds(fileIds);
+  }
+
+  async assertCanAddBytes(storageId: string, additionalBytes: number): Promise<void> {
+    if (!Number.isFinite(additionalBytes) || additionalBytes <= 0) {
+      return;
+    }
+    const storage = await this.storageModel.findById(storageId).lean().exec();
+    if (!storage) {
+      throw new NotFoundException("Storage not found.");
+    }
+    const maxBytes = this.resolveMaxBytes(storage);
+    const usedBytes = await this.getUsedBytes(storageId);
+    if (usedBytes + additionalBytes > maxBytes) {
+      throw new RpcException({
+        code: "STORAGE_QUOTA_EXCEEDED",
+        message: `Storage quota exceeded: used ${usedBytes} of ${maxBytes} bytes.`,
+      });
+    }
+  }
+
+  private async sumBytesForStorageItemSubtree(
+    itemId: string,
+    storageId: string
+  ): Promise<number> {
+    const item = await this.itemQuery.getItemById(itemId);
+    if (!item || item.storageId !== storageId) {
+      return 0;
+    }
+    if (!item.isDirectory && item.fileId) {
+      try {
+        const meta = await this.fileService.getFileById(item.fileId.toString());
+        return Number(meta.size) || 0;
+      } catch {
+        return 0;
+      }
+    }
+    if (item.isDirectory) {
+      const children = await this.itemTree.getChildren(itemId, storageId);
+      let sum = 0;
+      for (const ch of children) {
+        sum += await this.sumBytesForStorageItemSubtree(ch._id.toString(), storageId);
+      }
+      return sum;
+    }
+    return 0;
+  }
+
   async createStorage(userId: number) {
+    const maxBytes = this.getDefaultMaxBytes();
     const storage = await this.storageModel.create({
       createdAt: Date.now(),
+      maxBytes,
     });
     const storageId = storage._id.toString();
 
@@ -103,7 +174,8 @@ export class StorageService implements IStorageService {
       id: storageId,
       items: [],
       createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
-      maxBytes: storage.maxBytes || 1024,
+      maxBytes: this.resolveMaxBytes(storage),
+      usedBytes: 0,
     };
   }
 
@@ -114,6 +186,11 @@ export class StorageService implements IStorageService {
 
     if (!isDirectory && !fileId) {
       throw new BadRequestException("File items must have a fileId.");
+    }
+
+    if (!isDirectory && fileId) {
+      const meta = await this.fileService.getFileById(fileId);
+      await this.assertCanAddBytes(storageId, Number(meta.size) || 0);
     }
 
     const item = await this.itemCommand.createItem(
@@ -135,6 +212,11 @@ export class StorageService implements IStorageService {
 
     if (!isDirectory && !fileId && !resourceId) {
       throw new BadRequestException("File items must have a fileId.");
+    }
+
+    if (!isDirectory && fileId) {
+      const meta = await this.fileService.getFileById(fileId);
+      await this.assertCanAddBytes(storageId, Number(meta.size) || 0);
     }
 
     const allowed = await this.itemQuery.isDescendantOrSelf(
@@ -164,11 +246,14 @@ export class StorageService implements IStorageService {
     if (!storage) {
       return null;
     }
+    const id = storage._id.toString();
+    const usedBytes = await this.getUsedBytes(id);
     return {
-      id: storage._id.toString(),
+      id,
       items: [],
       createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
-      maxBytes: storage.maxBytes || 1024,
+      maxBytes: this.resolveMaxBytes(storage),
+      usedBytes,
     };
   }
 
@@ -180,12 +265,19 @@ export class StorageService implements IStorageService {
       .find({ _id: { $in: storageIds } })
       .lean()
       .exec();
-    return storages.map((storage) => ({
-      id: storage._id.toString(),
-      tags: storage.tags || [],
-      createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
-      maxBytes: storage.maxBytes || 1024,
-    }));
+    return Promise.all(
+      storages.map(async (storage) => {
+        const id = storage._id.toString();
+        const usedBytes = await this.getUsedBytes(id);
+        return {
+          id,
+          tags: storage.tags || [],
+          createdAt: storage.createdAt?.toISOString() || new Date().toISOString(),
+          maxBytes: this.resolveMaxBytes(storage),
+          usedBytes,
+        };
+      }),
+    );
   }
 
   async getStoragesByUserId(userId: number) {
@@ -542,6 +634,12 @@ export class StorageService implements IStorageService {
         "Invalid storage item or ownership mismatch."
       );
     }
+
+    const addBytes = await this.sumBytesForStorageItemSubtree(
+      params.itemId,
+      params.storageId
+    );
+    await this.assertCanAddBytes(params.storageId, addBytes);
 
     const copiedItem = await this.itemCopy.copyItem(
       params.itemId,

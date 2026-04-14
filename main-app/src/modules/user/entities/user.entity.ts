@@ -64,6 +64,10 @@ export class User {
   @IsBoolean()
   isOAuthUser: boolean;
 
+  /** FCM device token for mobile push (optional) */
+  @Column({ type: 'varchar', nullable: true, default: null })
+  fcmToken: string | null;
+
   @OneToOne(() => Profile, (profile) => profile.user, { cascade: true })
   @JoinColumn()
   profile: Profile;

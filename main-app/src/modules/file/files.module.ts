@@ -7,9 +7,10 @@ import { FileClientModule } from '../file-client/file-client.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { PermissionModule } from '@application/permission/permission.module';
 import { RoomModule } from '@application/room/room.module';
+import { PushModule } from '../push/push.module';
 
 @Module({
-  imports: [FileClientModule, AuthModule, PermissionModule, RoomModule],
+  imports: [FileClientModule, AuthModule, PermissionModule, RoomModule, PushModule],
   controllers: [
     FileController,
     FileUploadController,

@@ -41,6 +41,7 @@ export class AuthService {
       publicUrl?: any;
       user?: any;
       uploadUrl?: any;
+      existing?: boolean;
     },
   ) {
     const isMobileApp = req.headers['x-client-type'] === 'mobile-app';
@@ -66,6 +67,8 @@ export class AuthService {
         publicUrl: payload.publicUrl,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         uploadUrl: payload.uploadUrl,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        existing: payload.existing,
       });
     }
 
@@ -195,6 +198,7 @@ export class AuthService {
     id: number;
     profile: User['profile'];
     role: UserRole;
+    existing: boolean;
   }> {
     const google = await this.googleIdTokenService.verifyAndExtractProfile(idToken);
     return this.validateGoogleProfile({
@@ -212,7 +216,7 @@ export class AuthService {
     email: string;
     firstName: string;
     avatarUrl?: string | null;
-  }): Promise<{ id: number; profile: User['profile']; role: UserRole }> {
+  }): Promise<{ id: number; profile: User['profile']; role: UserRole; existing: boolean }> {
     const email = payload.email?.trim().toLowerCase();
     if (!email) {
       throw new BadRequestException('Google account has no email');
@@ -233,6 +237,7 @@ export class AuthService {
         id: existing.id,
         profile: existing.profile,
         role: existing.role,
+        existing: true,
       };
     }
 
@@ -254,6 +259,7 @@ export class AuthService {
       id: full.id,
       profile: full.profile,
       role: full.role,
+      existing: false,
     };
   }
 

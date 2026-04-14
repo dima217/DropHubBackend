@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ProfileService } from '../services/profile.service';
+import { FcmTokenService } from '@application/push/fcm-token.service';
+import { NotificationService } from '../services/notification.service';
 import { UserUpdateProfileDTO } from '../dto/update-profile.dto';
+import { UpdateFcmTokenDto } from '../dto/update-fcm-token.dto';
+import { MarkNotificationsReadDto } from '../dto/mark-notifications-read.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import type { RequestWithUser } from 'src/types/express';
 
@@ -19,7 +23,11 @@ import type { RequestWithUser } from 'src/types/express';
 @Controller('/profile')
 @UseGuards(JwtAuthGuard)
 export class ProfileController {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(
+    private readonly profileService: ProfileService,
+    private readonly fcmTokenService: FcmTokenService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   @Post('/update')
   @ApiOperation({
@@ -48,6 +56,57 @@ export class ProfileController {
   @ApiResponse({ status: 404, description: 'Profile not found' })
   async updateProfile(@Req() req: RequestWithUser, @Body() body: UserUpdateProfileDTO) {
     return this.profileService.updateProfile(req.user.profileId, body);
+  }
+
+  @Post('/fcm-token')
+  @ApiOperation({
+    summary: 'Register FCM device token',
+    description:
+      'Stores Firebase Cloud Messaging token for push notifications. Send null or empty to clear.',
+  })
+  @ApiBody({ type: UpdateFcmTokenDto })
+  @ApiResponse({ status: 200, description: 'Token saved' })
+  async registerFcmToken(@Req() req: RequestWithUser, @Body() body: UpdateFcmTokenDto) {
+    const raw = body.token;
+    const token =
+      raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '')
+        ? null
+        : raw.trim();
+    await this.fcmTokenService.saveToken(req.user.id, token);
+    return { success: true };
+  }
+
+  @Get('/notifications')
+  @ApiOperation({
+    summary: 'Get my notifications',
+    description: 'Returns notifications for authenticated user ordered by newest first.',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
+  @ApiResponse({ status: 200, description: 'Notifications list' })
+  async getMyNotifications(
+    @Req() req: RequestWithUser,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const parsedLimit = Number.isFinite(Number(limit)) ? Number(limit) : 20;
+    const parsedOffset = Number.isFinite(Number(offset)) ? Number(offset) : 0;
+    return this.notificationService.getUserNotifications(req.user.id, parsedLimit, parsedOffset);
+  }
+
+  @Post('/notifications/read')
+  @ApiOperation({
+    summary: 'Mark notifications as read',
+    description: 'Marks selected notifications as read for authenticated user.',
+  })
+  @ApiBody({ type: MarkNotificationsReadDto })
+  @ApiResponse({ status: 200, description: 'Notifications updated' })
+  async markNotificationsAsRead(
+    @Req() req: RequestWithUser,
+    @Body() body: MarkNotificationsReadDto,
+  ) {
+    await this.notificationService.markAsRead(req.user.id, body.ids);
+    return { success: true };
   }
 
   @Get('/search')

@@ -12,16 +12,32 @@ import { ActionLog } from './entities/action-log.entity';
 import { ActionLogService } from './services/action-log.service';
 import { AdminStatisticsService } from './services/admin-statistics.service';
 import { PermissionModule } from '@application/permission/permission.module';
+import { FcmTokenModule } from '@application/push/fcm-token.module';
+import { Notification } from './entities/notification.entity';
+import { NotificationService } from './services/notification.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Profile, ActionLog]),
+    TypeOrmModule.forFeature([User, Profile, ActionLog, Notification]),
     forwardRef(() => AuthModule),
     FileClientModule,
     forwardRef(() => PermissionModule),
+    FcmTokenModule,
   ],
   controllers: [UserController, ProfileController],
-  providers: [UsersService, ProfileService, ActionLogService, AdminStatisticsService],
-  exports: [UsersService, ProfileService, ActionLogService, AdminStatisticsService],
+  providers: [
+    UsersService,
+    ProfileService,
+    ActionLogService,
+    AdminStatisticsService,
+    NotificationService,
+  ],
+  exports: [
+    UsersService,
+    ProfileService,
+    ActionLogService,
+    AdminStatisticsService,
+    NotificationService,
+  ],
 })
 export class UserModule {}
