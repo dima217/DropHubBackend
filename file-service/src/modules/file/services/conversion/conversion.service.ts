@@ -156,6 +156,13 @@ export class ConversionService implements OnModuleInit {
       throw new BadRequestException("File does not belong to the storage");
     }
 
+    if (params.resourceId) {
+      const inScope = await this.isDescendantOrSelf(sourceItem._id, params.resourceId);
+      if (!inScope) {
+        throw new BadRequestException("File is outside shared resource scope");
+      }
+    }
+
     const parentId =
       params.parentId != null
         ? new Types.ObjectId(params.parentId)
@@ -168,6 +175,21 @@ export class ConversionService implements OnModuleInit {
       userId: sourceItem.userId,
       creatorId: sourceItem.creatorId,
     };
+  }
+
+  private async isDescendantOrSelf(itemId: Types.ObjectId, ancestorId: string): Promise<boolean> {
+    if (itemId.toString() === ancestorId) {
+      return true;
+    }
+
+    let current = await this.storageItemModel.findById(itemId).lean();
+    while (current?.parentId) {
+      if (current.parentId.toString() === ancestorId) {
+        return true;
+      }
+      current = await this.storageItemModel.findById(current.parentId).lean();
+    }
+    return false;
   }
 
   private async convertByType(

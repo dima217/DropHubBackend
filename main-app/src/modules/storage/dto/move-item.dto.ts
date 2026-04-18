@@ -19,5 +19,14 @@ export class MoveItemDto {
   @IsOptional()
   @IsString()
   newParentId: string | null;
+
+  @ApiProperty({
+    description: 'Shared root resource ID (optional, enables shared scope checks)',
+    example: '123e4567-e89b-12d3-a456-426614174999',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  resourceId?: string;
 }
 

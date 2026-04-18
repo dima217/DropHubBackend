@@ -25,6 +25,10 @@ export class ConvertFileDto {
 
   @IsString()
   @IsOptional()
+  resourceId?: string;
+
+  @IsString()
+  @IsOptional()
   parentId?: string | null;
 
   @IsString()

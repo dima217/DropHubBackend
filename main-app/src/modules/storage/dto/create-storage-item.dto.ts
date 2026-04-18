@@ -34,4 +34,14 @@ export class CreateStorageItemDto {
   @IsString()
   @IsUUID('4')
   fileId?: string | null;
+
+  @ApiProperty({
+    description: 'Shared root resource ID (required for shared operations)',
+    example: '123e4567-e89b-12d3-a456-426614174999',
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  resourceId?: string;
 }

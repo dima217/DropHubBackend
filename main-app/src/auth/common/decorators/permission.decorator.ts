@@ -10,6 +10,8 @@ export interface PermissionMetadata {
   resourceIdField: string;
 }
 
+export const PERMISSIONS_ANY_KEY = 'permissions_any';
+
 export const RequirePermission = (
   resourceType: ResourceType,
   requiredRoles: AccessRole[],
@@ -22,3 +24,6 @@ export const RequirePermission = (
     resourceIdSource,
     resourceIdField,
   } as PermissionMetadata);
+
+export const RequireAnyPermission = (...permissions: PermissionMetadata[]) =>
+  SetMetadata(PERMISSIONS_ANY_KEY, permissions);

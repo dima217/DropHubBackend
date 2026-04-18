@@ -96,6 +96,7 @@ export type FileConversionType =
 export interface ConvertFilePayload {
   roomId?: string;
   storageId?: string;
+  resourceId?: string;
   parentId?: string | null;
   fileId: string;
   conversion: FileConversionType;

@@ -26,6 +26,11 @@ export class ConvertFileDto {
   @IsOptional()
   storageId?: string;
 
+  @ApiPropertyOptional({ example: '67f130f46075c9e8bbd35e4a' })
+  @IsString()
+  @IsOptional()
+  resourceId?: string;
+
   @ApiPropertyOptional({ example: '67f130f46075c9e8bbd35e4f', nullable: true })
   @IsString()
   @IsOptional()

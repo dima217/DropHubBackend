@@ -8,6 +8,7 @@ import {
   Get,
   Param,
   PayloadTooLargeException,
+  HttpException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -31,24 +32,30 @@ import { UpdateStorageItemTagsDto } from '../dto/update-storage-item-tags.dto';
 import { RenameItemDto } from '../dto/rename-item.dto';
 import { CopyItemDto } from '../dto/copy-item.dto';
 import {
+  BatchCopyItemsDto,
+  BatchDeleteItemsDto,
+  BatchMoveItemsDto,
+  BatchRestoreItemsDto,
+  BatchUpdateItemTagsDto,
+} from '../dto/batch-storage-items.dto';
+import {
   StorageItemResponseDto,
   StorageResponseDto,
   DeleteItemResponseDto,
 } from '../dto/responses/storage-item-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
-import { RolesGuard } from 'src/auth/guards/roles-guard';
-import { Roles } from 'src/auth/common/decorators/role.decorator';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
-import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
+import { RequireAnyPermission, RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { RemoveStorageTagsDto } from '@application/user/dto/remove-storage.tags.dto';
 import { ArchiveRoomDto } from '@application/file/dto/archive-room.dto';
-import { RestoreDeletedStructureAdminDto } from '../dto/admin/restore-deleted-structure-admin.dto';
 import type { UserStorageDto } from '../../file-client/types/storage';
 import {
   FileServiceErrorCode,
   getFileServiceRpcPayload,
 } from '@application/file/exceptions/file-rcp.error';
+import { SharedService } from '../services/shared.service';
+import type { DeleteStorageItemResult, StorageItemDto } from '../../file-client/types/storage';
 
 async function getPrimaryUserStorage(
   storageService: StorageService,
@@ -66,7 +73,50 @@ export class UserStorageController {
   constructor(
     private readonly storageClient: StorageClientService,
     private readonly storageService: StorageService,
+    private readonly sharedService: SharedService,
   ) {}
+
+  private async enforceSharedScopeIfNeeded(
+    req: RequestWithUser,
+    params: {
+      storageId: string;
+      resourceId?: string;
+      itemId?: string;
+      parentId?: string | null;
+      targetParentId?: string | null;
+      newParentId?: string | null;
+    },
+  ) {
+    if (!params.resourceId) {
+      return;
+    }
+    await this.sharedService.assertSharedMutationScope({
+      storageId: params.storageId,
+      resourceId: params.resourceId,
+      userId: req.user.id,
+      itemId: params.itemId,
+      parentId: params.parentId,
+      targetParentId: params.targetParentId,
+      newParentId: params.newParentId,
+    });
+  }
+
+  private batchErrorMessage(err: unknown): string {
+    if (err instanceof HttpException) {
+      const r = err.getResponse();
+      if (typeof r === 'string') {
+        return r;
+      }
+      if (r && typeof r === 'object' && 'message' in r) {
+        const m = (r as { message?: string | string[] }).message;
+        return Array.isArray(m) ? m.join(', ') : m ?? err.message;
+      }
+    }
+    if (err instanceof Error) {
+      return err.message;
+    }
+    return 'Unknown error';
+  }
 
   @Get()
   @ApiOperation({
@@ -126,11 +176,19 @@ export class UserStorageController {
 
   @Post('create-item')
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
   )
   @ApiOperation({
     summary: 'Create a new storage item (file or directory)',
@@ -161,6 +219,24 @@ export class UserStorageController {
   @ApiResponse({ status: 404, description: 'Storage or parent folder not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
   async createStorageItem(@Req() req: RequestWithUser, @Body() body: CreateStorageItemDto) {
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      parentId: body.parentId ?? body.resourceId ?? null,
+    });
+
+    if (body.resourceId) {
+      return this.storageClient.createSharedStorageItem({
+        userId: req.user.id,
+        storageId: body.storageId,
+        resourceId: body.resourceId,
+        name: body.name,
+        isDirectory: body.isDirectory,
+        parentId: body.parentId ?? body.resourceId ?? null,
+        fileId: body.fileId ?? null,
+      });
+    }
+
     return this.storageService.createStorageItem(
       req.user.id,
       body.storageId,
@@ -251,11 +327,19 @@ export class UserStorageController {
   }
 
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
-    'body',
-    'storageId',
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE, AccessRole.READ],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
   )
   @Post('structure')
   @ApiOperation({
@@ -284,23 +368,38 @@ export class UserStorageController {
       throw new BadRequestException('Storage ID is required.');
     }
 
-    const params = {
+    if (body.resourceId) {
+      return this.sharedService.getSharedItemStructure(
+        body.storageId,
+        body.parentId ?? body.resourceId,
+        body.resourceId,
+        req.user.id,
+      );
+    }
+
+    return this.storageClient.getStorageStructure({
       storageId: body.storageId,
       parentId: body.parentId !== undefined ? body.parentId : null,
       userId: req.user.id,
-    };
-
-    return this.storageClient.getStorageStructure(params);
+    });
   }
 
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
-  )
   @Post('delete-item')
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
   @ApiOperation({
     summary: 'Soft delete a storage item (move to trash)',
     description:
@@ -323,6 +422,11 @@ export class UserStorageController {
   @ApiResponse({ status: 404, description: 'Storage or item not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
   async deleteStorageItem(@Body() body: DeleteItemDto, @Req() req: RequestWithUser) {
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      itemId: body.itemId,
+    });
     if (!body.storageId || !body.itemId) {
       throw new BadRequestException('Both Storage ID and Item ID are required.');
     }
@@ -337,13 +441,21 @@ export class UserStorageController {
   }
 
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
-  )
   @Post('restore-item')
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
   @ApiOperation({
     summary: 'Restore a storage item from trash',
     description:
@@ -370,6 +482,12 @@ export class UserStorageController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
   async restoreStorageItem(@Body() body: RestoreItemDto, @Req() req: RequestWithUser) {
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      itemId: body.itemId,
+      newParentId: body.newParentId,
+    });
     if (!body.storageId || !body.itemId) {
       throw new BadRequestException('Both Storage ID and Item ID are required.');
     }
@@ -385,13 +503,21 @@ export class UserStorageController {
   }
 
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
-  )
   @Post('delete-item-permanent')
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
   @ApiOperation({
     summary: 'Permanently delete a storage item (cannot be restored)',
     description:
@@ -415,6 +541,11 @@ export class UserStorageController {
   @ApiResponse({ status: 404, description: 'Storage or item not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
   async permanentDeleteStorageItem(@Body() body: DeleteItemDto, @Req() req: RequestWithUser) {
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      itemId: body.itemId,
+    });
     if (!body.storageId || !body.itemId) {
       throw new BadRequestException('Both Storage ID and Item ID are required.');
     }
@@ -477,41 +608,21 @@ export class UserStorageController {
     return await this.storageClient.getTrashItems(body.storageId, req.user.id);
   }
 
-  @Get('admin/users/:userId/storages')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @ApiOperation({
-    summary: 'Admin: get one user storages with full tree',
-    description:
-      'Returns storages for selected user only. Each storage contains full structure including deleted and pending permanent deletion items.',
-  })
-  async getAdminUserStorages(@Param('userId') userId: string) {
-    const parsedUserId = Number(userId);
-    if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
-      throw new BadRequestException('Valid userId is required.');
-    }
-    return this.storageService.getAdminUserStoragesWithDeleted(parsedUserId);
-  }
-
-  @Post('admin/restore-deleted-structure')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @ApiOperation({
-    summary: 'Admin: restore deleted storage structure',
-    description:
-      'Restores a previously permanently-deleted storage structure (root + children) back into user tree before retention expires.',
-  })
-  async restoreDeletedStructureForAdmin(@Body() body: RestoreDeletedStructureAdminDto) {
-    return this.storageService.restoreDeletedStructureAdmin(body.itemId, body.newParentId);
-  }
-
   @Post('update-item-tags')
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
   )
   @ApiOperation({
     summary: 'Update tags for a storage item',
@@ -535,21 +646,35 @@ export class UserStorageController {
   @ApiResponse({ status: 404, description: 'Storage or item not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing JWT token' })
   async updateStorageItemTags(@Req() req: RequestWithUser, @Body() body: UpdateStorageItemTagsDto) {
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      itemId: body.itemId,
+    });
     return await this.storageService.updateStorageItemTags(
       req.user.id,
       body.storageId,
       body.itemId,
       body.tags,
+      body.resourceId,
     );
   }
 
   @Post('move-item')
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
   )
   @ApiOperation({
     summary: 'Move a storage item to another directory',
@@ -580,6 +705,12 @@ export class UserStorageController {
     if (!body.storageId || !body.itemId) {
       throw new BadRequestException('Both Storage ID and Item ID are required.');
     }
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      itemId: body.itemId,
+      newParentId: body.newParentId,
+    });
     return await this.storageClient.moveStorageItem({
       storageId: body.storageId,
       itemId: body.itemId,
@@ -590,11 +721,19 @@ export class UserStorageController {
 
   @Post('rename-item')
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
   )
   @ApiOperation({
     summary: 'Rename a storage item',
@@ -622,6 +761,11 @@ export class UserStorageController {
     if (!body.storageId || !body.itemId || !body.newName) {
       throw new BadRequestException('Storage ID, Item ID and new name are required.');
     }
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      itemId: body.itemId,
+    });
     return await this.storageClient.renameStorageItem({
       storageId: body.storageId,
       itemId: body.itemId,
@@ -632,11 +776,19 @@ export class UserStorageController {
 
   @Post('copy-item')
   @UseGuards(PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.WRITE],
-    'body',
-    'storageId',
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
   )
   @ApiOperation({
     summary: 'Create a copy of a storage item',
@@ -667,6 +819,12 @@ export class UserStorageController {
     if (!body.storageId || !body.itemId) {
       throw new BadRequestException('Both Storage ID and Item ID are required.');
     }
+    await this.enforceSharedScopeIfNeeded(req, {
+      storageId: body.storageId,
+      resourceId: body.resourceId,
+      itemId: body.itemId,
+      targetParentId: body.targetParentId,
+    });
     try {
       return await this.storageClient.copyStorageItem({
         storageId: body.storageId,
@@ -681,6 +839,376 @@ export class UserStorageController {
       }
       throw err;
     }
+  }
+
+  @Post('batch-move-item')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
+  @ApiOperation({
+    summary: 'Move multiple storage items to the same parent folder',
+    description:
+      'Applies the same `newParentId` to every `itemId`. Each item is validated independently; failures do not stop other items.',
+  })
+  @ApiBody({ type: BatchMoveItemsDto })
+  @ApiResponse({ status: 200, description: 'Per-item results' })
+  async batchMoveItems(@Req() req: RequestWithUser, @Body() body: BatchMoveItemsDto) {
+    if (!body.storageId?.trim()) {
+      throw new BadRequestException('storageId is required');
+    }
+    const itemIds = [...new Set(body.itemIds)];
+    const results: Array<{
+      itemId: string;
+      success: boolean;
+      item?: StorageItemDto;
+      error?: string;
+    }> = [];
+    for (const itemId of itemIds) {
+      try {
+        await this.enforceSharedScopeIfNeeded(req, {
+          storageId: body.storageId,
+          resourceId: body.resourceId,
+          itemId,
+          newParentId: body.newParentId ?? null,
+        });
+        const item = await this.storageClient.moveStorageItem({
+          storageId: body.storageId,
+          itemId,
+          newParentId: body.newParentId ?? null,
+          userId: req.user.id,
+        });
+        results.push({ itemId, success: true, item });
+      } catch (err) {
+        results.push({ itemId, success: false, error: this.batchErrorMessage(err) });
+      }
+    }
+    return {
+      total: itemIds.length,
+      succeeded: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  }
+
+  @Post('batch-copy-item')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
+  @ApiOperation({
+    summary: 'Copy multiple storage items into the same target folder',
+    description:
+      'Each source item is copied under `targetParentId`. Quota errors are reported per item.',
+  })
+  @ApiBody({ type: BatchCopyItemsDto })
+  @ApiResponse({ status: 200, description: 'Per-item results' })
+  async batchCopyItems(@Req() req: RequestWithUser, @Body() body: BatchCopyItemsDto) {
+    if (!body.storageId?.trim()) {
+      throw new BadRequestException('storageId is required');
+    }
+    const itemIds = [...new Set(body.itemIds)];
+    const results: Array<{
+      itemId: string;
+      success: boolean;
+      item?: StorageItemDto;
+      error?: string;
+    }> = [];
+    for (const itemId of itemIds) {
+      try {
+        await this.enforceSharedScopeIfNeeded(req, {
+          storageId: body.storageId,
+          resourceId: body.resourceId,
+          itemId,
+          targetParentId: body.targetParentId ?? null,
+        });
+        const item = await this.storageClient.copyStorageItem({
+          storageId: body.storageId,
+          itemId,
+          targetParentId: body.targetParentId ?? null,
+          userId: req.user.id,
+        });
+        results.push({ itemId, success: true, item });
+      } catch (err) {
+        const rpc = getFileServiceRpcPayload(err);
+        if (rpc?.code === FileServiceErrorCode.StorageQuotaExceeded) {
+          results.push({
+            itemId,
+            success: false,
+            error: rpc.message ?? 'Storage quota exceeded',
+          });
+        } else {
+          results.push({ itemId, success: false, error: this.batchErrorMessage(err) });
+        }
+      }
+    }
+    return {
+      total: itemIds.length,
+      succeeded: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  }
+
+  @Post('batch-delete-item')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
+  @ApiOperation({
+    summary: 'Soft-delete multiple storage items (move to trash)',
+    description: 'Same as `delete-item` but for many `itemId`s; each item is processed independently.',
+  })
+  @ApiBody({ type: BatchDeleteItemsDto })
+  @ApiResponse({ status: 200, description: 'Per-item results' })
+  async batchDeleteItems(@Req() req: RequestWithUser, @Body() body: BatchDeleteItemsDto) {
+    if (!body.storageId?.trim()) {
+      throw new BadRequestException('storageId is required');
+    }
+    const itemIds = [...new Set(body.itemIds)];
+    const results: Array<{
+      itemId: string;
+      success: boolean;
+      data?: DeleteStorageItemResult;
+      error?: string;
+    }> = [];
+    for (const itemId of itemIds) {
+      try {
+        await this.enforceSharedScopeIfNeeded(req, {
+          storageId: body.storageId,
+          resourceId: body.resourceId,
+          itemId,
+        });
+        const data = await this.storageClient.deleteStorageItem({
+          storageId: body.storageId,
+          itemId,
+          userId: req.user.id,
+        });
+        results.push({ itemId, success: true, data });
+      } catch (err) {
+        results.push({ itemId, success: false, error: this.batchErrorMessage(err) });
+      }
+    }
+    return {
+      total: itemIds.length,
+      succeeded: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  }
+
+  @Post('batch-restore-item')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
+  @ApiOperation({
+    summary: 'Restore multiple storage items from trash',
+    description:
+      'Same as `restore-item` per id: optional `newParentId` applies to every item (e.g. when originals are gone).',
+  })
+  @ApiBody({ type: BatchRestoreItemsDto })
+  @ApiResponse({ status: 200, description: 'Per-item results' })
+  async batchRestoreItems(@Req() req: RequestWithUser, @Body() body: BatchRestoreItemsDto) {
+    if (!body.storageId?.trim()) {
+      throw new BadRequestException('storageId is required');
+    }
+    const itemIds = [...new Set(body.itemIds)];
+    const results: Array<{
+      itemId: string;
+      success: boolean;
+      data?: DeleteStorageItemResult;
+      error?: string;
+    }> = [];
+    for (const itemId of itemIds) {
+      try {
+        await this.enforceSharedScopeIfNeeded(req, {
+          storageId: body.storageId,
+          resourceId: body.resourceId,
+          itemId,
+          newParentId: body.newParentId,
+        });
+        const data = await this.storageClient.restoreStorageItem({
+          storageId: body.storageId,
+          itemId,
+          userId: req.user.id,
+          newParentId: body.newParentId,
+        });
+        results.push({ itemId, success: true, data });
+      } catch (err) {
+        results.push({ itemId, success: false, error: this.batchErrorMessage(err) });
+      }
+    }
+    return {
+      total: itemIds.length,
+      succeeded: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  }
+
+  @Post('batch-delete-item-permanent')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
+  @ApiOperation({
+    summary: 'Permanently delete multiple items from trash',
+    description:
+      'Same rules as `delete-item-permanent`: each item must already be in trash (soft-deleted). Irreversible per successful item.',
+  })
+  @ApiBody({ type: BatchDeleteItemsDto })
+  @ApiResponse({ status: 200, description: 'Per-item results' })
+  async batchPermanentDeleteItems(@Req() req: RequestWithUser, @Body() body: BatchDeleteItemsDto) {
+    if (!body.storageId?.trim()) {
+      throw new BadRequestException('storageId is required');
+    }
+    const itemIds = [...new Set(body.itemIds)];
+    const results: Array<{
+      itemId: string;
+      success: boolean;
+      data?: DeleteStorageItemResult;
+      error?: string;
+    }> = [];
+    for (const itemId of itemIds) {
+      try {
+        await this.enforceSharedScopeIfNeeded(req, {
+          storageId: body.storageId,
+          resourceId: body.resourceId,
+          itemId,
+        });
+        const data = await this.storageClient.permanentDeleteStorageItem({
+          storageId: body.storageId,
+          itemId,
+          userId: req.user.id,
+        });
+        results.push({ itemId, success: true, data });
+      } catch (err) {
+        results.push({ itemId, success: false, error: this.batchErrorMessage(err) });
+      }
+    }
+    return {
+      total: itemIds.length,
+      succeeded: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  }
+
+  @Post('batch-update-item-tags')
+  @UseGuards(PermissionGuard)
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
+  )
+  @ApiOperation({
+    summary: 'Set tags on multiple storage items',
+    description:
+      'The same `tags` array replaces existing tags on each listed item (same semantics as `update-item-tags`).',
+  })
+  @ApiBody({ type: BatchUpdateItemTagsDto })
+  @ApiResponse({ status: 200, description: 'Per-item results' })
+  async batchUpdateItemTags(@Req() req: RequestWithUser, @Body() body: BatchUpdateItemTagsDto) {
+    if (!body.storageId?.trim()) {
+      throw new BadRequestException('storageId is required');
+    }
+    const itemIds = [...new Set(body.itemIds)];
+    const results: Array<{
+      itemId: string;
+      success: boolean;
+      item?: StorageItemDto;
+      error?: string;
+    }> = [];
+    for (const itemId of itemIds) {
+      try {
+        await this.enforceSharedScopeIfNeeded(req, {
+          storageId: body.storageId,
+          resourceId: body.resourceId,
+          itemId,
+        });
+        const { item } = await this.storageService.updateStorageItemTags(
+          req.user.id,
+          body.storageId,
+          itemId,
+          body.tags,
+          body.resourceId,
+        );
+        results.push({ itemId, success: true, item });
+      } catch (err) {
+        results.push({ itemId, success: false, error: this.batchErrorMessage(err) });
+      }
+    }
+    return {
+      total: itemIds.length,
+      succeeded: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
   }
 
   @Post('archive-room')
@@ -699,57 +1227,5 @@ export class UserStorageController {
       body.parentId ?? null,
       body.fileIds,
     );
-  }
-}
-
-@ApiTags('Public Storage')
-@Controller('public/storage')
-export class PublicStorageController {
-  constructor(
-    private readonly storageClient: StorageClientService,
-    private readonly storageService: StorageService,
-  ) {}
-
-  @Get(':token')
-  @ApiOperation({
-    summary: 'Get storage item by public token',
-    description:
-      'Retrieves a storage item using a public share token. This endpoint does not require authentication and can be used to share storage items publicly. The token must be valid and grant at least READ access. If the item is a directory, its children are also included in the response.',
-  })
-  @ApiParam({
-    name: 'token',
-    description: 'Public share token for the storage item',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Storage item retrieved successfully',
-    schema: {
-      allOf: [
-        { $ref: getSchemaPath(StorageItemResponseDto) },
-        {
-          type: 'object',
-          properties: {
-            children: {
-              type: 'array',
-              items: { $ref: getSchemaPath(StorageItemResponseDto) },
-              description: 'Children items (only for directories)',
-            },
-          },
-        },
-      ],
-    },
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - token is invalid, expired, or does not grant read access',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - token does not grant sufficient permissions',
-  })
-  @ApiResponse({ status: 404, description: 'Item not found or token is invalid' })
-  async getItemByToken(@Param('token') token: string) {
-    return this.storageClient.getStorageItemByToken(token);
   }
 }

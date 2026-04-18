@@ -119,11 +119,18 @@ export class StorageService {
     storageId: string,
     itemId: string,
     tags: string[],
+    resourceId?: string,
   ): Promise<{ success: boolean; item: StorageItemDto }> {
-    await this.permissionService.verifyUserAccess(userId, storageId, ResourceType.STORAGE, [
-      AccessRole.ADMIN,
-      AccessRole.WRITE,
-    ]);
+    if (resourceId) {
+      await this.permissionService.verifyUserAccess(userId, resourceId, ResourceType.SHARED, [
+        AccessRole.WRITE,
+      ]);
+    } else {
+      await this.permissionService.verifyUserAccess(userId, storageId, ResourceType.STORAGE, [
+        AccessRole.ADMIN,
+        AccessRole.WRITE,
+      ]);
+    }
 
     const item = await this.storageClient.updateStorageItemTags(storageId, itemId, tags);
 

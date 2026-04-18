@@ -15,4 +15,13 @@ export class GetStructureDto {
   @IsOptional()
   @IsString()
   parentId?: string | null;
+
+  @ApiProperty({
+    description: 'Shared root resource ID (optional, for shared-scope structure fetch)',
+    example: '123e4567-e89b-12d3-a456-426614174999',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  resourceId?: string;
 }

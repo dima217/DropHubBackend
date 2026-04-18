@@ -8,7 +8,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { RequestWithUser } from 'src/types/express';
 import { UniversalPermissionService } from 'src/modules/permission/services/permission.service';
-import { PERMISSION_KEY, PermissionMetadata } from '../common/decorators/permission.decorator';
+import {
+  PERMISSION_KEY,
+  PERMISSIONS_ANY_KEY,
+  PermissionMetadata,
+} from '../common/decorators/permission.decorator';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -22,8 +26,12 @@ export class PermissionGuard implements CanActivate {
       PERMISSION_KEY,
       context.getHandler(),
     );
+    const anyPermissionMetadata = this.reflector.get<PermissionMetadata[]>(
+      PERMISSIONS_ANY_KEY,
+      context.getHandler(),
+    );
 
-    if (!permissionMetadata) {
+    if (!permissionMetadata && (!anyPermissionMetadata || anyPermissionMetadata.length === 0)) {
       return true;
     }
 
@@ -34,52 +42,58 @@ export class PermissionGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    const { resourceType, requiredRoles, resourceIdSource, resourceIdField } = permissionMetadata;
+    const checks = anyPermissionMetadata?.length ? anyPermissionMetadata : [permissionMetadata!];
 
-    let resourceId: string | undefined;
+    let lastError: Error | null = null;
 
+    for (const check of checks) {
+      const { resourceType, requiredRoles, resourceIdSource, resourceIdField } = check;
+      const resourceId = this.extractResourceId(request, resourceIdSource, resourceIdField);
+      if (!resourceId) {
+        continue;
+      }
+
+      try {
+        await this.permissionService.verifyUserAccess(
+          user.id,
+          resourceId,
+          resourceType,
+          requiredRoles,
+        );
+        return true;
+      } catch (error) {
+        lastError = error as Error;
+      }
+    }
+
+    if (lastError instanceof NotFoundException || lastError instanceof ForbiddenException) {
+      throw lastError;
+    }
+    throw new ForbiddenException('Access denied');
+  }
+
+  private extractResourceId(
+    request: RequestWithUser,
+    resourceIdSource: 'body' | 'params' | 'query',
+    resourceIdField: string,
+  ): string | undefined {
     switch (resourceIdSource) {
       case 'body': {
         const body = request.body as Record<string, unknown>;
-        resourceId = body?.[resourceIdField] as string | undefined;
-        break;
+        return body?.[resourceIdField] as string | undefined;
       }
       case 'params': {
         const params = request.params as Record<string, string>;
-        resourceId = params?.[resourceIdField];
-        break;
+        return params?.[resourceIdField];
       }
       case 'query': {
         const query = request.query as Record<string, string>;
-        resourceId = query?.[resourceIdField];
-        break;
+        return query?.[resourceIdField];
       }
       default: {
         const body = request.body as Record<string, unknown>;
-        resourceId = body?.[resourceIdField] as string | undefined;
-        break;
+        return body?.[resourceIdField] as string | undefined;
       }
-    }
-
-    if (!resourceId) {
-      throw new NotFoundException(
-        `Resource ID not found in ${resourceIdSource}.${resourceIdField}`,
-      );
-    }
-
-    try {
-      await this.permissionService.verifyUserAccess(
-        user.id,
-        resourceId,
-        resourceType,
-        requiredRoles,
-      );
-      return true;
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
-        throw error;
-      }
-      throw new ForbiddenException('Access denied');
     }
   }
 }

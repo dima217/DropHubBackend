@@ -19,11 +19,12 @@ import {
 import type { RequestWithUser } from 'src/types/express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { PermissionGuard } from 'src/auth/guards/permission.guard';
-import { RequirePermission } from 'src/auth/common/decorators/permission.decorator';
+import { RequireAnyPermission, RequirePermission } from 'src/auth/common/decorators/permission.decorator';
 import { ResourceType, AccessRole } from 'src/modules/permission/entities/permission.entity';
 import { UpdateFileDto } from '../dto/update-file.dto';
 import { RoomsGateway } from '@application/room/gateway/room.gateway';
 import { ConvertFileDto } from '../dto/convert-file.dto';
+import { StorageClientService } from '@application/file-client/services/storage-client.service';
 
 @ApiTags('Files')
 @ApiExtraModels(DeleteFileResponseDto, RoomFileResponseDto, ArchiveRoomResponseDto)
@@ -32,6 +33,7 @@ export class FileController {
   constructor(
     private readonly fileClient: FileClientService,
     private readonly roomGateway: RoomsGateway,
+    private readonly storageClient: StorageClientService,
   ) {}
 
   @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -135,11 +137,19 @@ export class FileController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)
-  @RequirePermission(
-    ResourceType.STORAGE,
-    [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
-    'body',
-    'storageId',
+  @RequireAnyPermission(
+    {
+      resourceType: ResourceType.STORAGE,
+      requiredRoles: [AccessRole.ADMIN, AccessRole.READ, AccessRole.WRITE],
+      resourceIdSource: 'body',
+      resourceIdField: 'storageId',
+    },
+    {
+      resourceType: ResourceType.SHARED,
+      requiredRoles: [AccessRole.WRITE, AccessRole.READ],
+      resourceIdSource: 'body',
+      resourceIdField: 'resourceId',
+    },
   )
   @Post('/convert-storage')
   @ApiOperation({
@@ -148,7 +158,15 @@ export class FileController {
       'Converts a file from user storage into another format and saves converted result(s) back to storage.',
   })
   @ApiBody({ type: ConvertFileDto })
-  async convertStorageFile(@Body() dto: ConvertFileDto) {
+  async convertStorageFile(@Body() dto: ConvertFileDto, @Req() req: RequestWithUser) {
+    if (dto.resourceId && dto.parentId) {
+      await this.storageClient.getSharedItemStructure({
+        storageId: dto.storageId!,
+        parentId: dto.parentId,
+        resourceId: dto.resourceId,
+        userId: req.user.id,
+      });
+    }
     return this.fileClient.convertFile({ ...dto, roomId: undefined });
   }
 

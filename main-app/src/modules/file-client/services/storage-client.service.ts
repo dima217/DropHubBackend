@@ -48,6 +48,10 @@ export interface GetSharedItemStructurePayload {
   userId: number;
 }
 
+export interface CreateSharedStorageItemPayload extends CreateStorageItemPayload {
+  resourceId: string;
+}
+
 export interface AdminRestoreDeletedStructurePayload {
   itemId: string;
   newParentId?: string | null;
@@ -70,6 +74,10 @@ export class StorageClientService {
 
   async createStorageItem(data: CreateStorageItemPayload): Promise<StorageItemDto> {
     return this.send<StorageItemDto, CreateStorageItemPayload>('storage.createItem', data);
+  }
+
+  async createSharedStorageItem(data: CreateSharedStorageItemPayload): Promise<StorageItemDto> {
+    return this.send<StorageItemDto, CreateSharedStorageItemPayload>('storage.createSharedItem', data);
   }
 
   async getItemsByIds(itemIds: string[]): Promise<StorageItemDto[]> {
