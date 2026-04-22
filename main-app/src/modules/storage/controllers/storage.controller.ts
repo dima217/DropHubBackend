@@ -377,11 +377,13 @@ export class UserStorageController {
       );
     }
 
-    return this.storageClient.getStorageStructure({
+    const items = await this.storageClient.getStorageStructure({
       storageId: body.storageId,
       parentId: body.parentId !== undefined ? body.parentId : null,
       userId: req.user.id,
     });
+
+    return this.sharedService.attachSharedParticipantsToOwnedItems(items, req.user.id);
   }
 
   @UseGuards(PermissionGuard)
@@ -605,7 +607,8 @@ export class UserStorageController {
       throw new BadRequestException('Storage ID is required.');
     }
 
-    return await this.storageClient.getTrashItems(body.storageId, req.user.id);
+    const items = await this.storageClient.getTrashItems(body.storageId, req.user.id);
+    return this.sharedService.attachFileStats(items);
   }
 
   @Post('update-item-tags')

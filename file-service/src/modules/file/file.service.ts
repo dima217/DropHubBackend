@@ -276,6 +276,18 @@ export class FileService implements IFileService {
     );
   }
 
+  async incrementDownloadCount(fileId: string): Promise<void> {
+    await this.fileModel
+      .updateOne(
+        { _id: fileId },
+        {
+          $inc: { downloadCount: 1 },
+        },
+      )
+      .exec();
+    await this.cacheService.delete(`file:meta:${fileId}`);
+  }
+
   async getFileByUploadId(uploadId: string) {
     const fileDoc = await this.fileModel
       .findOne({ "uploadSession.uploadId": uploadId })

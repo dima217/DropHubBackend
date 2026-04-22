@@ -100,6 +100,7 @@ export class DownloadService implements IDownloadService {
 
     for (const fileId of fileIds) {
       const file = await this.verifyAndGetFile(fileId, userId);
+      await this.fileService.incrementDownloadCount(fileId);
       const url = await this.generatePresignedUrl(file.key, fileId);
       results.push({ fileId, url });
     }
@@ -122,6 +123,7 @@ export class DownloadService implements IDownloadService {
 
     const fileId = payload.resourceId;
     const file = await this.verifyAndGetFile(fileId);
+    await this.fileService.incrementDownloadCount(fileId);
 
     return this.generatePresignedUrl(file.key, fileId);
   }

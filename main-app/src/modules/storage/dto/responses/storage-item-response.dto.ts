@@ -59,6 +59,36 @@ export class CreatorInfoDto {
   profile: CreatorProfileInfoDto | null;
 }
 
+export class SharedParticipantProfileInfoDto {
+  @ApiProperty({ description: 'User display name', example: 'John Doe' })
+  firstName: string;
+
+  @ApiProperty({
+    description: 'URL of the avatar image',
+    example: 'https://example.com/avatar.jpg',
+    nullable: true,
+  })
+  avatarUrl: string | null;
+}
+
+export class SharedParticipantInfoDto {
+  @ApiProperty({ description: 'Participant user ID', example: 5 })
+  userId: number;
+
+  @ApiProperty({ description: 'Participant access role', enum: AccessRole, example: AccessRole.READ })
+  role: AccessRole;
+
+  @ApiProperty({ description: 'Participant email', example: 'user@example.com', nullable: true })
+  email: string | null;
+
+  @ApiProperty({
+    description: 'Participant profile information',
+    type: SharedParticipantProfileInfoDto,
+    nullable: true,
+  })
+  profile: SharedParticipantProfileInfoDto | null;
+}
+
 export class StorageItemResponseDto {
   @ApiProperty({ description: 'Item ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   id: string;
@@ -153,6 +183,21 @@ export class StorageItemResponseDto {
 
   @ApiProperty({
     description:
+      'File download count (only for files). Mirrors `fileMeta.downloadCount` for simpler frontend usage.',
+    example: 12,
+    required: false,
+  })
+  downloadCount?: number;
+
+  @ApiProperty({
+    description: 'File size in bytes (only for files). Mirrors `fileMeta.size`.',
+    example: 1048576,
+    required: false,
+  })
+  size?: number;
+
+  @ApiProperty({
+    description:
       'Creator information with id, email and profile (firstName, avatarUrl). ' +
       'Present primarily for shared items responses.',
     type: CreatorInfoDto,
@@ -160,6 +205,14 @@ export class StorageItemResponseDto {
     required: false,
   })
   creator?: CreatorInfoDto | null;
+
+  @ApiProperty({
+    description:
+      'List of users who have shared access to this item (for owner/admin storage structure view).',
+    type: [SharedParticipantInfoDto],
+    required: false,
+  })
+  sharedWith?: SharedParticipantInfoDto[];
 }
 
 export class StorageResponseDto {

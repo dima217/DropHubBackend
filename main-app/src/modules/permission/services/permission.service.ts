@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { AccessRole, Permission, ResourceType } from '../entities/permission.entity';
 import { CacheService } from 'src/cache/cache.service';
 import { PermissionSchema, PermissionType } from '../schemas/permission.schema';
@@ -153,6 +153,23 @@ export class UniversalPermissionService {
   ): Promise<Permission[]> {
     return await this.permissionRepository.find({
       where: { resourceId, resourceType },
+      relations: ['user', 'user.profile'],
+    });
+  }
+
+  async getPermissionsByResources(
+    resourceIds: string[],
+    resourceType: ResourceType,
+  ): Promise<Permission[]> {
+    if (resourceIds.length === 0) {
+      return [];
+    }
+
+    return await this.permissionRepository.find({
+      where: {
+        resourceId: In(resourceIds),
+        resourceType,
+      },
       relations: ['user', 'user.profile'],
     });
   }

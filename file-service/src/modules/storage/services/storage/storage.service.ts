@@ -431,7 +431,7 @@ export class StorageService implements IStorageService {
 
   async getTrashItems(storageId: string) {
     const items = await this.itemQuery.getTrashItems(storageId);
-    return items.map((item) => StorageItemMapper.toBaseDto(item));
+    return this.enrichItemsWithMetadata(items, true);
   }
 
   async restoreDeletedStructureAdmin(params: {
