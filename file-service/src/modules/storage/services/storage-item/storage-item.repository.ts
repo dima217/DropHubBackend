@@ -39,6 +39,10 @@ export class StorageItemRepository {
     return this.model.findByIdAndUpdate(id, update, { new: true });
   }
 
+  aggregate(pipeline: any[]): Promise<any[]> {
+    return this.model.aggregate(pipeline).exec();
+  }
+
   deleteMany(filter: any) {
     return this.model.deleteMany(filter);
   }

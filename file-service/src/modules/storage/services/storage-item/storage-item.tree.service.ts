@@ -48,19 +48,40 @@ export class StorageItemTreeService {
     itemId: string,
     includeDeleted = false
   ): Promise<{ total: number; files: number; folders: number }> {
-    const query: any = {
-      parentId: new Types.ObjectId(itemId),
-    };
+    const map = await this.getChildrenCountBatch([itemId], includeDeleted);
+    return map.get(itemId) ?? { total: 0, files: 0, folders: 0 };
+  }
+
+  async getChildrenCountBatch(
+    itemIds: string[],
+    includeDeleted = false,
+  ): Promise<Map<string, { total: number; files: number; folders: number }>> {
+    const result = new Map<string, { total: number; files: number; folders: number }>();
+    if (itemIds.length === 0) return result;
+
+    const objectIds = itemIds.map((id) => new Types.ObjectId(id));
+    const matchStage: any = { parentId: { $in: objectIds } };
     if (!includeDeleted) {
-      query.deletedAt = null;
+      matchStage.deletedAt = null;
     }
-    const children = await this.repo.findLean(query);
 
-    const total = children.length;
-    const files = children.filter((child) => !child.isDirectory).length;
-    const folders = children.filter((child) => child.isDirectory).length;
+    const rows = await this.repo.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: '$parentId',
+          total: { $sum: 1 },
+          files: { $sum: { $cond: [{ $eq: ['$isDirectory', false] }, 1, 0] } },
+          folders: { $sum: { $cond: ['$isDirectory', 1, 0] } },
+        },
+      },
+    ]);
 
-    return { total, files, folders };
+    for (const row of rows) {
+      result.set(String(row._id), { total: row.total, files: row.files, folders: row.folders });
+    }
+
+    return result;
   }
 
   async getAllItemsByStorageId(storageId: string): Promise<StorageItemLean[]> {

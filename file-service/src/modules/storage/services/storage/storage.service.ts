@@ -296,31 +296,34 @@ export class StorageService implements IStorageService {
     items: StorageItem[],
     includeDeletedForDirectoryStats = false
   ): Promise<EnrichedStorageItemDto[]> {
-    const enrichedItems = await Promise.all(
-      items.map(async (item): Promise<EnrichedStorageItemDto> => {
-        if (item.isDirectory) {
-          const childrenCount = await this.itemTree.getChildrenCount(
-            item._id.toString(),
-            includeDeletedForDirectoryStats
-          );
-          return StorageItemMapper.toDirectoryDto(item, childrenCount);
-        } else {
-          if (item.fileId) {
-            try {
-              const fileMeta = await this.fileService.getFileById(
-                item.fileId.toString()
-              );
-              return StorageItemMapper.toFileDto(item, fileMeta);
-            } catch (error) {
-              return StorageItemMapper.toFileDto(item);
-            }
-          }
-          return StorageItemMapper.toFileDto(item);
-        }
-      })
-    );
+    if (items.length === 0) return [];
 
-    return enrichedItems;
+    const dirIds = items
+      .filter((i) => i.isDirectory)
+      .map((i) => i._id.toString());
+
+    const fileIds = items
+      .filter((i) => !i.isDirectory && i.fileId)
+      .map((i) => i.fileId!.toString());
+
+    const [childCountMap, fileMetaMap] = await Promise.all([
+      this.itemTree.getChildrenCountBatch(dirIds, includeDeletedForDirectoryStats),
+      this.fileService.getFilesByIds(fileIds),
+    ]);
+
+    return items.map((item): EnrichedStorageItemDto => {
+      if (item.isDirectory) {
+        const childrenCount = childCountMap.get(item._id.toString()) ?? {
+          total: 0,
+          files: 0,
+          folders: 0,
+        };
+        return StorageItemMapper.toDirectoryDto(item, childrenCount);
+      }
+
+      const fileMeta = item.fileId ? fileMetaMap.get(item.fileId.toString()) : undefined;
+      return StorageItemMapper.toFileDto(item, fileMeta);
+    });
   }
 
   async getFullStorageStructure(

@@ -48,6 +48,7 @@ export interface IFileService {
     params: AuthenticatedGettingFilesByRoomParams
   ): Promise<RoomWithFiles>;
   getFileById(fileId: string): Promise<FileMeta>;
+  getFilesByIds(fileIds: string[]): Promise<Map<string, FileMeta>>;
   incrementDownloadCount(fileId: string): Promise<void>;
   /** Sum of `size` for each id in order (missing files count as 0). */
   sumFilesSizeByIds(fileIds: string[]): Promise<number>;

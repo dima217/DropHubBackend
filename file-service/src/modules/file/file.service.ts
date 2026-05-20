@@ -25,6 +25,7 @@ import { STORAGE_SERVICE_TOKEN } from "../storage/interfaces";
 import { z } from "zod";
 import {
   IFileService,
+  FileMeta,
   AuthenticatedGettingFilesByRoomParams,
 } from "./interfaces/file-service.interface";
 import { ROOM_SERVICE_TOKEN } from "../room/interfaces";
@@ -274,6 +275,45 @@ export class FileService implements IFileService {
       fileMetaSchema,
       this.FILE_META_TTL
     );
+  }
+
+  async getFilesByIds(fileIds: string[]): Promise<Map<string, FileMeta>> {
+    if (fileIds.length === 0) return new Map();
+
+    const unique = [...new Set(fileIds)];
+    const now = new Date();
+
+    // Check cache first for each id, collect misses
+    const result = new Map<string, FileMeta>();
+    const cacheMisses: string[] = [];
+
+    await Promise.all(
+      unique.map(async (id) => {
+        const cached = await this.cacheService.get(`file:meta:${id}`, fileMetaSchema);
+        if (cached) {
+          result.set(id, cached as FileMeta);
+        } else {
+          cacheMisses.push(id);
+        }
+      }),
+    );
+
+    if (cacheMisses.length > 0) {
+      const docs = await this.fileModel
+        .find({ _id: { $in: cacheMisses }, $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }] })
+        .lean()
+        .exec();
+
+      await Promise.all(
+        docs.map(async (doc) => {
+          const id = String(doc._id);
+          result.set(id, doc as unknown as FileMeta);
+          await this.cacheService.set(`file:meta:${id}`, doc, this.FILE_META_TTL);
+        }),
+      );
+    }
+
+    return result;
   }
 
   async incrementDownloadCount(fileId: string): Promise<void> {
