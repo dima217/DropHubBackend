@@ -19,8 +19,15 @@ export class StorageItemRepository {
     return this.model.findOne(query);
   }
 
-  findLean(query: any): Promise<StorageItemLean[]> {
-    return this.model.find(query).lean().exec();
+  findLean(query: any, options?: { skip?: number; limit?: number }): Promise<StorageItemLean[]> {
+    let q = this.model.find(query).lean();
+    if (options?.skip !== undefined) q = q.skip(options.skip);
+    if (options?.limit !== undefined) q = q.limit(options.limit);
+    return q.exec();
+  }
+
+  count(query: any): Promise<number> {
+    return this.model.countDocuments(query).exec();
   }
 
   findByIdLean(id: string | Types.ObjectId): Promise<StorageItemLean | null> {

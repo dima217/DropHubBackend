@@ -58,6 +58,32 @@ export class StorageItemQueryService {
     return this.repo.findLean(query);
   }
 
+  async getAdminItemsPaginated(
+    storageId: string,
+    filter: 'all' | 'deleted' | 'pending',
+    page: number,
+    limit: number,
+  ): Promise<{ items: StorageItemLean[]; total: number }> {
+    const query: Record<string, unknown> = { storageId };
+
+    if (filter === 'deleted') {
+      query.deletedAt = { $ne: null };
+      query.permanentDeleteAt = null;
+    } else if (filter === 'pending') {
+      query.deletedAt = { $ne: null };
+      query.permanentDeleteAt = { $ne: null };
+    }
+    // 'all' — no extra filter, returns every item in the storage
+
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.repo.findLean(query, { skip, limit }),
+      this.repo.count(query),
+    ]);
+
+    return { items, total };
+  }
+
   async hasFileReference(fileId: string): Promise<boolean> {
     const item = await this.repo.findOne({ fileId: new Types.ObjectId(fileId) });
     return Boolean(item);

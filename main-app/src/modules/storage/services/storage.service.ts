@@ -170,7 +170,10 @@ export class StorageService {
     return this.storageClient.restoreDeletedStructureAdmin({ itemId, newParentId });
   }
 
-  async getAdminUserStoragesWithDeleted(userId: number) {
+  async getAdminUserStoragesWithDeleted(
+    userId: number,
+    pagination: { page: number; limit: number; filter: 'all' | 'deleted' | 'pending' },
+  ) {
     const user = await this.userService.getUserById(userId);
     if (!user) {
       return { user: null, storages: [] };
@@ -189,11 +192,25 @@ export class StorageService {
     const storages = storageIds.length ? await this.storageClient.getStoragesByIds(storageIds) : [];
 
     const storagesWithItems = await Promise.all(
-      storages.map(async (storage) => ({
-        ...storage,
-        userRole: AccessRole.ADMIN,
-        items: await this.storageClient.getFullStorageStructureAdmin(storage.id),
-      })),
+      storages.map(async (storage) => {
+        const result = await this.storageClient.getFullStorageStructureAdminPaginated(
+          storage.id,
+          pagination.filter,
+          pagination.page,
+          pagination.limit,
+        );
+        return {
+          ...storage,
+          userRole: AccessRole.ADMIN,
+          items: result.items,
+          pagination: {
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages,
+          },
+        };
+      }),
     );
 
     return {

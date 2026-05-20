@@ -1,10 +1,11 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-guard';
 import { RolesGuard } from 'src/auth/guards/roles-guard';
 import { Roles } from 'src/auth/common/decorators/role.decorator';
 import { StorageService } from '../services/storage.service';
 import { RestoreDeletedStructureAdminDto } from '../dto/admin/restore-deleted-structure-admin.dto';
+import { GetAdminUserStoragesDto } from '../dto/admin/get-admin-user-storages.dto';
 
 @ApiTags('Storage Admin')
 @Controller('storage/admin')
@@ -15,16 +16,23 @@ export class StorageAdminController {
 
   @Get('users/:userId/storages')
   @ApiOperation({
-    summary: 'Admin: get one user storages with full tree',
+    summary: 'Admin: get one user storages with paginated items',
     description:
-      'Returns storages for selected user only. Each storage contains full structure including deleted and pending permanent deletion items.',
+      'Returns storages for selected user. Items are paginated and can be filtered by status: all | deleted | pending.',
   })
-  async getAdminUserStorages(@Param('userId') userId: string) {
+  async getAdminUserStorages(
+    @Param('userId') userId: string,
+    @Query() query: GetAdminUserStoragesDto,
+  ) {
     const parsedUserId = Number(userId);
     if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
       throw new BadRequestException('Valid userId is required.');
     }
-    return this.storageService.getAdminUserStoragesWithDeleted(parsedUserId);
+    return this.storageService.getAdminUserStoragesWithDeleted(parsedUserId, {
+      page: query.page ?? 1,
+      limit: query.limit ?? 50,
+      filter: query.filter ?? 'all',
+    });
   }
 
   @Post('restore-deleted-structure')

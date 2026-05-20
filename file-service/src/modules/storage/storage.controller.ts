@@ -49,6 +49,18 @@ export class StorageController {
     return this.storageService.getFullStorageStructureAdmin(data.storageId);
   }
 
+  @MessagePattern('storage.getFullStructureAdminPaginated')
+  async getFullStructureAdminPaginated(
+    @Payload() data: { storageId: string; filter: 'all' | 'deleted' | 'pending'; page: number; limit: number },
+  ) {
+    return this.storageService.getFullStorageStructureAdminPaginated(
+      data.storageId,
+      data.filter,
+      data.page,
+      data.limit,
+    );
+  }
+
   @MessagePattern('storage.deleteItem')
   async deleteItem(@Payload() data: { storageId: string; itemId: string; userId: number }) {
     return this.storageService.deleteStorageItem(data);

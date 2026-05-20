@@ -342,6 +342,23 @@ export class StorageService implements IStorageService {
     return this.enrichItemsWithMetadata(items, true);
   }
 
+  async getFullStorageStructureAdminPaginated(
+    storageId: string,
+    filter: 'all' | 'deleted' | 'pending',
+    page: number,
+    limit: number,
+  ): Promise<{ items: EnrichedStorageItemDto[]; total: number; page: number; limit: number; totalPages: number }> {
+    const { items, total } = await this.itemQuery.getAdminItemsPaginated(storageId, filter, page, limit);
+    const enriched = await this.enrichItemsWithMetadata(items, true);
+    return {
+      items: enriched,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   async getStorageStructure(
     params: GetStorageItemsParams
   ): Promise<EnrichedStorageItemDto[]> {

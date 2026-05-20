@@ -110,6 +110,15 @@ export class StorageClientService {
     });
   }
 
+  async getFullStorageStructureAdminPaginated(
+    storageId: string,
+    filter: 'all' | 'deleted' | 'pending',
+    page: number,
+    limit: number,
+  ): Promise<{ items: StorageItemDto[]; total: number; page: number; limit: number; totalPages: number }> {
+    return this.send('storage.getFullStructureAdminPaginated', { storageId, filter, page, limit });
+  }
+
   async deleteStorageItem(data: DeleteStorageItemPayload): Promise<DeleteStorageItemResult> {
     return this.send<DeleteStorageItemResult, DeleteStorageItemPayload>('storage.deleteItem', data);
   }

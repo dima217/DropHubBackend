@@ -41,6 +41,12 @@ export interface IStorageService {
   getStorageItemByToken(token: string): Promise<StorageItem & { children?: StorageItem[] }>;
   getFullStorageStructure(storageId: string, userId: number): Promise<any[]>;
   getFullStorageStructureAdmin(storageId: string): Promise<any[]>;
+  getFullStorageStructureAdminPaginated(
+    storageId: string,
+    filter: 'all' | 'deleted' | 'pending',
+    page: number,
+    limit: number,
+  ): Promise<{ items: any[]; total: number; page: number; limit: number; totalPages: number }>;
   getStorageStructure(params: {
     storageId: string;
     parentId: string | null;
