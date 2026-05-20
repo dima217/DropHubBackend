@@ -15,6 +15,7 @@ import type { USocket } from 'src/types/socket';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SupportTicket } from '../entities/support-ticket.entity';
+import { UserRole } from '@application/user/entities/user.entity';
 
 @WebSocketGateway({
   cors: { origin: '*' },
@@ -79,7 +80,7 @@ export class SupportGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('support.subscribeAdmin')
   @UseGuards(WsJwtAuthGuard)
   handleSubscribeAdmin(@ConnectedSocket() client: USocket) {
-    if (client.user?.role !== 'admin') {
+    if (client.user?.role !== UserRole.ADMIN) {
       throw new WsException('Forbidden');
     }
     client.join('support:admin');
@@ -108,4 +109,3 @@ export class SupportGateway implements OnGatewayConnection, OnGatewayDisconnect 
     client.leave(`user:${client.user.id}`);
   }
 }
-  

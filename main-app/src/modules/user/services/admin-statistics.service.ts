@@ -21,23 +21,47 @@ export class AdminStatisticsService {
 
     const uploadsByUser = new Map<number, number>();
     const requestsByUser = new Map<number, number>();
-    const errorsByUser = new Map<number, number>();
+    const authErrorsByUser = new Map<number, number>();
+    const forbiddensByUser = new Map<number, number>();
     const ipsByUser = new Map<number, Set<string>>();
+    const agentsByUser = new Map<number, Set<string>>();
+    const pathsByUser = new Map<number, Set<string>>();
+    const logTimesByUser = new Map<number, Date[]>();
     const lastActivityByUser = new Map<number, Date>();
 
     for (const log of logs) {
       if (!log.userId) continue;
-      requestsByUser.set(log.userId, (requestsByUser.get(log.userId) ?? 0) + 1);
-      if (log.statusCode >= 400) {
-        errorsByUser.set(log.userId, (errorsByUser.get(log.userId) ?? 0) + 1);
+      const uid = log.userId;
+
+      requestsByUser.set(uid, (requestsByUser.get(uid) ?? 0) + 1);
+
+      if (log.statusCode === 401) {
+        authErrorsByUser.set(uid, (authErrorsByUser.get(uid) ?? 0) + 1);
       }
+      if (log.statusCode === 403) {
+        forbiddensByUser.set(uid, (forbiddensByUser.get(uid) ?? 0) + 1);
+      }
+
       if (log.ip) {
-        if (!ipsByUser.has(log.userId)) ipsByUser.set(log.userId, new Set());
-        ipsByUser.get(log.userId)!.add(log.ip);
+        if (!ipsByUser.has(uid)) ipsByUser.set(uid, new Set());
+        ipsByUser.get(uid)!.add(log.ip);
       }
-      const prev = lastActivityByUser.get(log.userId);
+
+      if (log.userAgent) {
+        if (!agentsByUser.has(uid)) agentsByUser.set(uid, new Set());
+        agentsByUser.get(uid)!.add(log.userAgent);
+      }
+
+      const pathKey = `${log.method}:${log.path.replace(/\/[0-9a-f-]{8,}/gi, '/:id')}`;
+      if (!pathsByUser.has(uid)) pathsByUser.set(uid, new Set());
+      pathsByUser.get(uid)!.add(pathKey);
+
+      if (!logTimesByUser.has(uid)) logTimesByUser.set(uid, []);
+      logTimesByUser.get(uid)!.push(log.createdAt);
+
+      const prev = lastActivityByUser.get(uid);
       if (!prev || log.createdAt > prev) {
-        lastActivityByUser.set(log.userId, log.createdAt);
+        lastActivityByUser.set(uid, log.createdAt);
       }
 
       if (
@@ -45,11 +69,72 @@ export class AdminStatisticsService {
         (log.path.includes('/confirm') || log.path.includes('/multipart/complete')) &&
         log.statusCode < 400
       ) {
-        uploadsByUser.set(log.userId, (uploadsByUser.get(log.userId) ?? 0) + 1);
+        uploadsByUser.set(uid, (uploadsByUser.get(uid) ?? 0) + 1);
       }
     }
 
-    const storageUsageByUser: Array<{ userId: number; email: string; usedBytes: number }> = [];
+    const BURST_WINDOW_MS = 60_000;
+    const burstByUser = new Map<number, number>();
+    for (const [uid, times] of logTimesByUser) {
+      const sorted = times.slice().sort((a, b) => a.getTime() - b.getTime());
+      let maxBurst = 0;
+      let left = 0;
+      for (let right = 0; right < sorted.length; right++) {
+        while (sorted[right].getTime() - sorted[left].getTime() > BURST_WINDOW_MS) left++;
+        maxBurst = Math.max(maxBurst, right - left + 1);
+      }
+      burstByUser.set(uid, maxBurst);
+    }
+
+    const userPermissions = await Promise.all(
+      users.map((user) =>
+        this.permissionService
+          .getPermissionsByUserIdAndType(user.id, ResourceType.STORAGE)
+          .then((perms) => ({ userId: user.id, perms })),
+      ),
+    );
+
+    const allStorageIds = Array.from(
+      new Set(
+        userPermissions.flatMap(({ perms }) =>
+          perms
+            .filter((p) => p.role === AccessRole.ADMIN)
+            .map((p) => p.resourceId),
+        ),
+      ),
+    );
+
+    const storagesBatch =
+      allStorageIds.length > 0
+        ? await this.storageClient.getStoragesByIds(allStorageIds)
+        : [];
+
+    const usedBytesByStorageId = new Map(
+      storagesBatch.map((s) => [s.id, s.usedBytes]),
+    );
+
+    const storageIdsByUser = new Map<number, string[]>();
+    for (const { userId, perms } of userPermissions) {
+      storageIdsByUser.set(
+        userId,
+        Array.from(
+          new Set(
+            perms.filter((p) => p.role === AccessRole.ADMIN).map((p) => p.resourceId),
+          ),
+        ),
+      );
+    }
+
+    const storageUsageByUser: Array<{ userId: number; email: string; usedBytes: number }> =
+      users.map((user) => ({
+        userId: user.id,
+        email: user.email,
+        usedBytes: (storageIdsByUser.get(user.id) ?? []).reduce(
+          (sum, sid) => sum + (usedBytesByStorageId.get(sid) ?? 0),
+          0,
+        ),
+      }));
+
     const foldersLoad: Array<{
       storageId: string;
       folderId: string;
@@ -58,43 +143,6 @@ export class AdminStatisticsService {
       filesCount: number;
       foldersCount: number;
     }> = [];
-
-    for (const user of users) {
-      const permissions = await this.permissionService.getPermissionsByUserIdAndType(
-        user.id,
-        ResourceType.STORAGE,
-      );
-      const storageIds = permissions
-        .filter((permission) => permission.role === AccessRole.ADMIN)
-        .map((permission) => permission.resourceId);
-      const uniqueStorageIds = Array.from(new Set(storageIds));
-
-      let totalBytes = 0;
-      for (const storageId of uniqueStorageIds) {
-        const items = await this.storageClient.getFullStorageStructureAdmin(storageId);
-        totalBytes += items.reduce(
-          (acc, item) => acc + (item.isDirectory ? 0 : (item.fileMeta?.size ?? 0)),
-          0,
-        );
-        for (const item of items) {
-          if (!item.isDirectory) continue;
-          foldersLoad.push({
-            storageId,
-            folderId: item.id,
-            folderName: item.name,
-            childrenCount: item.childrenCount ?? 0,
-            filesCount: item.filesCount ?? 0,
-            foldersCount: item.foldersCount ?? 0,
-          });
-        }
-      }
-
-      storageUsageByUser.push({
-        userId: user.id,
-        email: user.email,
-        usedBytes: totalBytes,
-      });
-    }
 
     const uploadLeaders = users
       .map((user) => ({
@@ -108,20 +156,77 @@ export class AdminStatisticsService {
     const suspiciousTraffic = users
       .map((user) => {
         const requests = requestsByUser.get(user.id) ?? 0;
-        const errors = errorsByUser.get(user.id) ?? 0;
+        const authErrors = authErrorsByUser.get(user.id) ?? 0;
+        const forbiddens = forbiddensByUser.get(user.id) ?? 0;
         const uniqueIps = ipsByUser.get(user.id)?.size ?? 0;
-        const errorRate = requests > 0 ? errors / requests : 0;
-        const score = requests * (1 + errorRate) + uniqueIps * 20;
+        const uniqueAgents = agentsByUser.get(user.id)?.size ?? 0;
+        const uniquePaths = pathsByUser.get(user.id)?.size ?? 0;
+        const peakPerMinute = burstByUser.get(user.id) ?? 0;
+
+        // Rate-based signals: not affected by total request volume.
+        // All rates require a minimum of 20 requests to avoid noise
+        // from users with 1-2 actions.
+        const MIN_REQ = 20;
+        const authErrorRate = requests >= MIN_REQ ? authErrors / requests : 0;
+        const forbiddenRate = requests >= MIN_REQ ? forbiddens / requests : 0;
+        // Path density: unique endpoints / total requests.
+        // Near 1.0 = every request goes to a new endpoint (scanner).
+        // Near 0.0 = same endpoints used repeatedly (normal usage).
+        const pathDensity = requests >= MIN_REQ ? uniquePaths / requests : 0;
+
+        // Score grows only above the threshold so that moderate error
+        // rates (normal session expiry, occasional wrong click) add nothing.
+        // rate * 100 gives a percentage value; multiplied by weight.
+        const authErrorScore =
+          authErrorRate > 0.05 && authErrors >= 10
+            ? Math.round(authErrorRate * 100) * 4
+            : 0;
+        const forbiddenScore =
+          forbiddenRate > 0.05 && forbiddens >= 5
+            ? Math.round(forbiddenRate * 100) * 3
+            : 0;
+        // Peak burst: already a rate (req/min), volume-independent.
+        const burstScore = Math.max(0, peakPerMinute - 30) * 3;
+        // Path density above 0.5 means more than half of all requests
+        // hit a unique endpoint — characteristic of API enumeration.
+        const enumerationScore =
+          pathDensity > 0.5 && uniquePaths > 10
+            ? Math.round(pathDensity * 100) * 2
+            : 0;
+        // Many IPs is only suspicious when combined with auth/forbidden errors.
+        const ipScore =
+          uniqueIps > 2 && authErrors + forbiddens > 5 ? uniqueIps * 5 : 0;
+        // Agent rotation is an absolute count — having 4+ distinct
+        // user-agents doesn't scale with usage volume.
+        const agentScore = uniqueAgents > 3 ? (uniqueAgents - 1) * 8 : 0;
+
+        const suspiciousScore = Math.round(
+          authErrorScore + forbiddenScore + burstScore + enumerationScore + ipScore + agentScore,
+        );
+
+        const signals: string[] = [];
+        if (authErrorRate > 0.05 && authErrors >= 10) signals.push('auth_errors');
+        if (forbiddenRate > 0.05 && forbiddens >= 5) signals.push('forbidden_probing');
+        if (peakPerMinute > 30) signals.push('request_burst');
+        if (pathDensity > 0.5 && uniquePaths > 10) signals.push('path_enumeration');
+        if (uniqueIps > 2 && authErrors + forbiddens > 5) signals.push('multi_ip_errors');
+        if (uniqueAgents > 3) signals.push('agent_rotation');
+
         return {
           userId: user.id,
           email: user.email,
           requests,
-          errors,
-          errorRate: Number(errorRate.toFixed(3)),
+          authErrors,
+          forbiddens,
           uniqueIps,
-          suspiciousScore: Math.round(score),
+          uniqueAgents,
+          uniquePaths,
+          peakRequestsPerMinute: peakPerMinute,
+          suspiciousScore,
+          signals,
         };
       })
+      .filter((u) => u.suspiciousScore > 0)
       .sort((a, b) => b.suspiciousScore - a.suspiciousScore)
       .slice(0, top);
 
