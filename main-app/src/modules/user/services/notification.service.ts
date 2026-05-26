@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { NotificationType } from '../constants/notification-types';
 import { Notification } from '../entities/notification.entity';
 
 type CreateNotificationPayload = {
   userId: number;
-  type: string;
+  type: NotificationType;
   title: string;
   body: string;
   data: Record<string, string>;

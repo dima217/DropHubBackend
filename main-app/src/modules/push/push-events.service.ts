@@ -3,6 +3,11 @@ import { UniversalPermissionService } from '@application/permission/services/per
 import { AccessRole, ResourceType } from '@application/permission/entities/permission.entity';
 import { UsersService } from '@application/user/services/user.service';
 import { NotificationService } from '@application/user/services/notification.service';
+import {
+  buildNotificationContent,
+  NotificationType,
+  resolveActorName,
+} from '@application/user/constants/notification-types';
 import { FcmService } from './fcm.service';
 
 const dataStr = (v: string | undefined) => (v === undefined ? '' : String(v));
@@ -26,10 +31,10 @@ export class PushEventsService {
         ...new Set(perms.map((p) => p.user.id).filter((id) => id !== actorUserId)),
       ];
       if (recipientIds.length === 0) return;
+
       const actor = await this.users.getUserById(actorUserId);
-      const name = actor?.profile?.firstName?.trim() || 'Someone';
-      await this.sendToUserIds(recipientIds, 'DropHub', `${name} added a file to the room`, {
-        type: 'room_file',
+      const actorName = resolveActorName(actor?.profile?.firstName);
+      await this.sendToUserIds(recipientIds, NotificationType.ROOM_FILE, actorUserId, actorName, {
         roomId: dataStr(roomId),
       });
     });
@@ -43,11 +48,14 @@ export class PushEventsService {
   ): Promise<void> {
     await this.safe(async () => {
       const granter = await this.users.getUserById(granterUserId);
-      const name = granter?.profile?.firstName?.trim() || 'Someone';
-      await this.sendToUserIds([targetUserId], 'DropHub', `${name} shared a folder with you`, {
-        type: 'shared_grant',
-        resourceId: dataStr(resourceId),
-      });
+      const actorName = resolveActorName(granter?.profile?.firstName);
+      await this.sendToUserIds(
+        [targetUserId],
+        NotificationType.SHARED_GRANT,
+        granterUserId,
+        actorName,
+        { resourceId: dataStr(resourceId) },
+      );
     });
   }
 
@@ -84,13 +92,13 @@ export class PushEventsService {
 
       if (targetIds.size === 0) return;
       const actor = await this.users.getUserById(actorUserId);
-      const name = actor?.profile?.firstName?.trim() || 'Someone';
+      const actorName = resolveActorName(actor?.profile?.firstName);
       await this.sendToUserIds(
         [...targetIds],
-        'DropHub',
-        `${name} uploaded a file to a shared folder`,
+        NotificationType.SHARED_UPLOAD,
+        actorUserId,
+        actorName,
         {
-          type: 'shared_upload',
           storageId: dataStr(storageId),
           resourceId: dataStr(sharedResourceId),
         },
@@ -100,19 +108,29 @@ export class PushEventsService {
 
   private async sendToUserIds(
     userIds: number[],
-    title: string,
-    body: string,
+    type: NotificationType,
+    actorUserId: number,
+    actorName: string,
     data: Record<string, string>,
   ): Promise<void> {
     if (userIds.length === 0) return;
-    const type = data.type ?? 'generic';
+
+    const resolvedActorName = resolveActorName(actorName);
+    const { title, body } = buildNotificationContent(type, { actorName: resolvedActorName });
+    const enrichedData: Record<string, string> = {
+      ...data,
+      type,
+      actorName: resolvedActorName,
+      actorUserId: String(actorUserId),
+    };
+
     await this.notifications.createMany(
       userIds.map((userId) => ({
         userId,
         type,
         title,
         body,
-        data,
+        data: enrichedData,
       })),
     );
 
@@ -120,7 +138,7 @@ export class PushEventsService {
     const users = await this.users.getUsersByIds(userIds);
     const tokens = users.map((u) => u.fcmToken).filter((t): t is string => !!t?.trim());
     if (tokens.length === 0) return;
-    await this.fcm.sendToTokens(tokens, title, body, data);
+    await this.fcm.sendToTokens(tokens, title, body, enrichedData);
   }
 
   private async safe(run: () => Promise<void>): Promise<void> {
