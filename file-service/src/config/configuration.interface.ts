@@ -36,8 +36,11 @@ export class MongoConfig {
 }
 
 export class S3Config {
+  @IsString()
+  endpoint!: string;
+
   @IsOptional() @IsString()
-  endpoint?: string;
+  region?: string;
 
   @IsOptional() @IsString()
   bucket?: string;
