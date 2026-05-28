@@ -1,3 +1,5 @@
 /node_modules
 /dist
 /.env.development
+/docker-compose.mongo.railway.yml
+/docker-compose.railway.yml

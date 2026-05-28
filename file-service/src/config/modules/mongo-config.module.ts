@@ -28,15 +28,22 @@ import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose';
 
         const query: Record<string, string> = {};
         if (mongoAuthSource) query['authSource'] = mongoAuthSource;
-        if (mongoReplicaSet) query['replicaSet'] = mongoReplicaSet;
+        if (mongoReplicaSet) {
+          query['replicaSet'] = mongoReplicaSet;
+          // single-node RS: avoid member hostname discovery (Railway private DNS)
+          query['directConnection'] = 'true';
+        }
 
         const queryString = Object.keys(query)
           .map(key => `${key}=${encodeURIComponent(query[key])}`)
           .join('&');
 
-          const uri = `mongodb://${credentials}${mongoHost}:${mongoPort}/${mongoDatabase}${queryString ? `?${queryString}` : ''}`;
+        const uri = `mongodb://${credentials}${mongoHost}:${mongoPort}/${mongoDatabase}${queryString ? `?${queryString}` : ''}`;
 
-        return { uri };
+        return {
+          uri,
+          serverSelectionTimeoutMS: 30_000,
+        };
       },
     }),
   ],

@@ -45,3 +45,5 @@ lerna-debug.log*
 .husky/_
 /secrets
 
+# Docker
+/docker-compose.railway.yml
