@@ -1,5 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import {
   S3Client,
   ListBucketsCommand,
@@ -17,31 +16,16 @@ import {
 import { NodeHttpHandler } from "@smithy/node-http-handler";
 import https from "https";
 import http from "http";
-import { AppConfig } from "../../config/configuration.interface";
 
 @Injectable()
 export class S3Service implements OnModuleInit {
-  private readonly logger = new Logger(S3Service.name);
   public client: S3Client;
 
-  constructor(private readonly configService: ConfigService<AppConfig, true>) {}
-
   onModuleInit() {
-    const endpoint = this.configService.get("s3.endpoint", { infer: true });
-    const region = this.configService.get("s3.region", { infer: true }) || "us-east-1";
-    const accessKeyId = this.configService.get("s3.accessKeyId", { infer: true }) ?? "";
-    const secretAccessKey =
-      this.configService.get("s3.secretAccessKey", { infer: true }) ?? "";
-
+    const endpoint = process.env.S3_ENDPOINT || "";
     const isHttps = endpoint.startsWith("https://");
 
-    this.logger.log(`S3 endpoint: ${endpoint} (path-style, region=${region})`);
-
-    const requestHandlerConfig: {
-      requestTimeout: number;
-      httpsAgent?: https.Agent;
-      httpAgent?: http.Agent;
-    } = {
+    const requestHandlerConfig: any = {
       requestTimeout: 15000,
     };
 
@@ -52,12 +36,12 @@ export class S3Service implements OnModuleInit {
     }
 
     this.client = new S3Client({
-      region,
-      endpoint,
+      region: process.env.S3_REGION || "us-east-1",
+      endpoint: endpoint,
       forcePathStyle: true,
       credentials: {
-        accessKeyId,
-        secretAccessKey,
+        accessKeyId: process.env.S3_ACCESS_KEY ?? "",
+        secretAccessKey: process.env.S3_SECRET_KEY ?? "",
       },
       requestHandler: new NodeHttpHandler(requestHandlerConfig),
     });
@@ -92,7 +76,7 @@ export class S3Service implements OnModuleInit {
 
   async copy(params: CopyObjectCommandInput) {
     return this.client.send(new CopyObjectCommand(params));
-  }
+  }  
 
   async get(params: GetObjectCommandInput) {
     return this.client.send(new GetObjectCommand(params));
