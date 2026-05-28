@@ -49,7 +49,7 @@ export class PreviewService implements IPreviewService {
         };
 
         const command = this.s3Service.createGetResourceCommand(previewData);
-        const url = await getSignedUrl(this.s3Service.client, command, {
+        const url = await getSignedUrl(this.s3Service.presignClient, command, {
           expiresIn: this.presignedUrlTTL,
         });
         return url;
@@ -85,7 +85,7 @@ export class PreviewService implements IPreviewService {
         };
 
         const command = this.s3Service.createGetResourceCommand(streamData);
-        const url = await getSignedUrl(this.s3Service.client, command, {
+        const url = await getSignedUrl(this.s3Service.presignClient, command, {
           expiresIn: this.presignedUrlTTL,
         });
 

@@ -67,7 +67,7 @@ export class UploadService implements IUploadService {
     const key = `${prefix}/${Date.now()}-${sanitizedName}`;
 
     const url = await getSignedUrl(
-      this.s3Service.client,
+      this.s3Service.presignClient,
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,

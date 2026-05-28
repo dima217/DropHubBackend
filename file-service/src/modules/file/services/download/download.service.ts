@@ -61,7 +61,7 @@ export class DownloadService implements IDownloadService {
           Key: key,
         };
         const command = this.s3Service.createGetResourceCommand(downloadData);
-        const url = await getSignedUrl(this.s3Service.client, command, {
+        const url = await getSignedUrl(this.s3Service.presignClient, command, {
           expiresIn: this.presignedUrlTTL,
         });
         return url;

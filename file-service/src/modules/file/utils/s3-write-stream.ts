@@ -64,7 +64,7 @@ export class S3WriteStream {
         Array.from({ length: totalParts }, async (_, i) => {
           const partNumber = i + 1;
           const url = await getSignedUrl(
-            this.s3Service.client,
+            this.s3Service.presignClient,
             new UploadPartCommand({
               Bucket: this.bucket,
               Key: key,

@@ -4,35 +4,70 @@
 
 | Файл | Назначение |
 |------|------------|
-| `docker-compose.mongo.railway.yml` | Только MongoDB — импорт отдельно, можно передеплоить без file-service |
-| `docker-compose.railway.yml` | MinIO + file-service (переменные из `.env.development`) |
+| `docker-compose.mongo.railway.yml` | Только MongoDB |
+| `docker-compose.minio.railway.yml` | MinIO + minio-setup (бакеты) |
+| `docker-compose.railway.yml` | Только file-service |
 
 ## Порядок импорта (один Railway-проект)
 
 1. `main-app/docker-compose.railway.yml` — postgres, redis, rabbitmq, app
 2. `file-service/docker-compose.mongo.railway.yml` — mongo
-3. `file-service/docker-compose.railway.yml` — minio, file-service
+3. `file-service/docker-compose.minio.railway.yml` — minio, minio-setup
+4. `file-service/docker-compose.railway.yml` — file-service
 
-## Mongo отдельно (replica set rs0)
+## Mongo отдельно
 
-`docker-compose.mongo.railway.yml` — custom Dockerfile (`docker/mongo-railway/`), потому что Railway **не применяет** `command: --replSet` к stock `mongo:7.0`.
-
-Диагностика внешнего proxy (пример): если `rs.status()` → `not running with --replSet`, mongo поднят как standalone и file-service не подключится с `MONGO_REPLICA_SET=rs0`.
-
-`file-service` Variables:
+`docker-compose.mongo.railway.yml` — `mongo:7.0`, rs0 вручную (см. комментарии в файле и Start Command в UI).
 
 ```
 MONGO_HOST=mongo.railway.internal
 MONGO_REPLICA_SET=rs0
 ```
 
-Перед деплоем custom mongo: **удалите volume** у сервиса `mongo`.
+## MinIO отдельно
+
+`docker-compose.minio.railway.yml` — передеплой minio/minio-setup без file-service.
+
+**file-service (internal + presigned URL):**
+
+```
+S3_ENDPOINT=http://minio.railway.internal:9000
+S3_PUBLIC_ENDPOINT=http://<minio-tcp-proxy>:<port>
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_BUCKET=files
+S3_BUCKET_AVATAR=avatars
+```
+
+- `S3_ENDPOINT` — сервер → MinIO внутри Railway
+- `S3_PUBLIC_ENDPOINT` — presigned URL для клиента (телефон/браузер). **Не** `minio.railway.internal` — снаружи ENOTFOUND
+
+TCP Proxy minio (port **9000**), например: `http://zephyr.proxy.rlwy.net:38287`
+
+После redeploy minio — **Redeploy minio-setup** (создаёт бакеты `files`, `avatars`).
+
+### Проверка minio
+
+1. **minio** → Deploy Logs — `API:` / `WebUI:` без crash.
+2. **minio-setup** → Deploy Logs — без ошибок `mc alias` / `mc mb`.
+3. Console: domain на port **9001**, логин `minioadmin` / `minioadmin`.
+
+Shell в **minio**:
+
+```bash
+mc alias set local http://localhost:9000 minioadmin minioadmin
+mc ls local
+```
+
+### 502 на публичном URL
+
+- Port **9000** в браузере → 502 нормально (S3 API).
+- Console → port **9001**.
 
 ## file-service
 
-1. Перетащите **`docker-compose.railway.yml`** на canvas (без mongo).
-2. Для **file-service**: **Settings → Networking → Generate Domain** (порт `3001`).
-3. `minio-setup` — одноразовая задача; после успеха можно остановить.
+1. Импорт `docker-compose.railway.yml`
+2. **Generate Domain**, port `3001`
 
 ## Связка с main-app
 
@@ -40,15 +75,8 @@ MONGO_REPLICA_SET=rs0
 |------------|----------|
 | `RABBITMQ_URL` | `amqp://guest:guest@rabbitmq:5672` |
 | `REDIS_HOST` | `redis` |
-| `REDIS_PASSWORD` | пусто, если Redis без пароля на Railway |
+| `REDIS_PASSWORD` | пусто, если Redis без пароля |
 
-## MinIO
+## GitHub deploy
 
-- API внутри сети: `http://minio:9000`
-- `S3_ENDPOINT` — только internal URL, не публичный domain
-
-## Альтернатива: GitHub deploy
-
-1. Root Directory: `file-service`
-2. Variables из `docker-compose.railway.yml` → сервис `file-service`
-3. Mongo — из `docker-compose.mongo.railway.yml` или Railway managed MongoDB
+Root Directory: `file-service` — Variables из `docker-compose.railway.yml`.

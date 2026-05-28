@@ -76,7 +76,7 @@ export class AvatarService implements OnModuleInit {
       ContentType: contentType,
     });
 
-    const url = await getSignedUrl(this.s3Service.client, command, {
+    const url = await getSignedUrl(this.s3Service.presignClient, command, {
       expiresIn: 3600,
     });
     return { url: url, key: key, publicUrl: this.getPublicUrl(key) };
