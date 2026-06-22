@@ -29,6 +29,7 @@ export class SearchService {
         id: string;
         name: string;
         isDirectory: boolean;
+        parentId: string | null;
         creatorId?: number;
         tags?: string[];
         resourceId: string;
@@ -99,6 +100,7 @@ export class SearchService {
           id: item.id,
           name: item.name,
           isDirectory: item.isDirectory,
+          parentId: item.parentId ?? null,
           creatorId: item.creatorId,
           tags: item.tags ?? [],
           resourceId: item.storageId,
