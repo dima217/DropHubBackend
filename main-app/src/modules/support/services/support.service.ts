@@ -6,6 +6,7 @@ import { CreateSupportTicketDto } from '../dto/create-support-ticket.dto';
 import { CreateAnonymousSupportTicketDto } from '../dto/create-anonymous-support-ticket.dto';
 import { GetSupportTicketsAdminDto } from '../dto/admin/get-support-tickets-admin.dto';
 import { SupportGateway } from '../gateway/support.gateway';
+import { PushEventsService } from 'src/modules/push/push-events.service';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class SupportService {
     @InjectRepository(SupportTicket)
     private readonly supportTicketRepository: Repository<SupportTicket>,
     private readonly supportGateway: SupportGateway,
+    private readonly pushEvents: PushEventsService,
   ) {}
 
   async createTicketByUser(userId: number, dto: CreateSupportTicketDto) {
@@ -129,6 +131,13 @@ export class SupportService {
 
     const saved = await this.supportTicketRepository.save(ticket);
     this.supportGateway.sendSupportTicketUpdate(ticketId, saved.userId ?? null);
+    if (saved.userId) {
+      void this.pushEvents.notifySupportTicketResponse(
+        saved.userId,
+        saved.id,
+        saved.title,
+      );
+    }
     return saved;
   }
 

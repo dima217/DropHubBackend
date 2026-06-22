@@ -17,6 +17,29 @@ import { AvatarClientService } from '@application/file-client/services/auth/avat
 import { RequestEmailCodeDto } from '../dto/request-email-code.dto';
 import { GoogleIdTokenService } from './google-id-token.service';
 
+function isGoogleAvatarUrl(url: string | null | undefined): boolean {
+  if (!url?.trim()) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host.includes('googleusercontent.com') ||
+      host.endsWith('.google.com') ||
+      host === 'google.com'
+    );
+  } catch {
+    return false;
+  }
+}
+
+function shouldSyncGoogleAvatar(
+  current: string | null | undefined,
+  googleUrl: string | null | undefined,
+): boolean {
+  if (!googleUrl?.trim()) return false;
+  if (!current?.trim()) return true;
+  return isGoogleAvatarUrl(current);
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -227,16 +250,25 @@ export class AuthService {
       if (existing.isBanned) {
         throw new ForbiddenException('Account is banned');
       }
-      if (existing.isOAuthUser && payload.avatarUrl && existing.profile?.id) {
+      if (
+        existing.isOAuthUser &&
+        existing.profile?.id &&
+        shouldSyncGoogleAvatar(existing.profile.avatarUrl, payload.avatarUrl)
+      ) {
         await this.profileService.updateProfile(existing.profile.id, {
-          avatarUrl: payload.avatarUrl,
+          avatarUrl: payload.avatarUrl!,
         });
-        existing.profile.avatarUrl = payload.avatarUrl;
       }
+
+      const full = await this.usersService.getUserById(existing.id);
+      if (!full?.profile) {
+        throw new BadRequestException('Failed to load user profile after Google sign-in');
+      }
+
       return {
-        id: existing.id,
-        profile: existing.profile,
-        role: existing.role,
+        id: full.id,
+        profile: full.profile,
+        role: full.role,
         existing: true,
       };
     }

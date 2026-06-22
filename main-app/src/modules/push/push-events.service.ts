@@ -106,6 +106,26 @@ export class PushEventsService {
     });
   }
 
+  /** Support ticket owner — admin replied */
+  async notifySupportTicketResponse(
+    userId: number,
+    ticketId: string,
+    ticketTitle: string,
+  ): Promise<void> {
+    await this.safe(async () => {
+      await this.sendToUserIds(
+        [userId],
+        NotificationType.SUPPORT_RESPONSE,
+        userId,
+        'Поддержка DropHub',
+        {
+          ticketId: dataStr(ticketId),
+          ticketTitle: dataStr(ticketTitle),
+        },
+      );
+    });
+  }
+
   private async sendToUserIds(
     userIds: number[],
     type: NotificationType,

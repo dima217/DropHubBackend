@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { S3Service } from "../s3/s3.service";
+import { S3Service, resolveS3Endpoint } from "../s3/s3.service";
 import { S3_BUCKET_AVATAR_TOKEN } from "../s3/s3.tokens";
 import * as fs from "fs";
 import * as path from "path";
@@ -65,7 +65,12 @@ export class AvatarService implements OnModuleInit {
   }
 
   private getPublicUrl(key: string): string {
-    return `http://10.158.36.195:9000/${this.avatarBucket}/${key}`;
+    const base = resolveS3Endpoint(
+      process.env.S3_PUBLIC_ENDPOINT?.trim() ||
+        process.env.S3_ENDPOINT?.trim() ||
+        "localhost:9000",
+    );
+    return `${base}/${this.avatarBucket}/${key}`;
   }
 
   async getUploadUrl(userId: string, contentType: string) {
