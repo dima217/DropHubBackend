@@ -22,6 +22,7 @@ import { S3_BUCKET_TOKEN } from "../s3/s3.tokens";
 import { CacheService } from "../../cache/cache.service";
 import type { IStorageService } from "../storage/interfaces";
 import { STORAGE_SERVICE_TOKEN } from "../storage/interfaces";
+import { matchesAnyMimeTypeFilter } from "./utils/mime-type-filter";
 import { z } from "zod";
 import {
   IFileService,
@@ -487,7 +488,7 @@ export class FileService implements IFileService {
 
           if (
             allowedMimeTypes?.length &&
-            !allowedMimeTypes.includes(file.mimeType)
+            !matchesAnyMimeTypeFilter(file.mimeType, allowedMimeTypes)
           ) {
             continue;
           }

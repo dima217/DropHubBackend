@@ -33,6 +33,7 @@ import {
   StorageItemMapper,
   type EnrichedStorageItemDto,
 } from "../../mappers/storage-item.mapper";
+import { matchesAnyMimeTypeFilter } from "../../../file/utils/mime-type-filter";
 
 export interface GetStorageItemsParams {
   storageId: string;
@@ -608,13 +609,15 @@ export class StorageService implements IStorageService {
     const enrichedItems = await this.enrichItemsWithMetadata(items);
     const allowedMimeTypes =
       params.mimeTypes ?? (params.mimeType ? [params.mimeType] : undefined);
-    return enrichedItems.filter(
-      item =>
-        item.isDirectory ||
-        !allowedMimeTypes?.length ||
-        (item.fileMeta?.mimeType != null &&
-          allowedMimeTypes.includes(item.fileMeta.mimeType)),
-    );
+    return enrichedItems.filter((item) => {
+      if (!allowedMimeTypes?.length) {
+        return true;
+      }
+      if (item.isDirectory) {
+        return false;
+      }
+      return matchesAnyMimeTypeFilter(item.fileMeta?.mimeType, allowedMimeTypes);
+    });
   }
 
   async renameStorageItem(params: {
