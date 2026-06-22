@@ -18,6 +18,10 @@
 
 4. Дождитесь деплоя всех сервисов. `app` стартует после healthcheck postgres/redis/rabbitmq.
 
+5. **Push (FCM):** сервис **app** → **Variables** → добавьте `GOOGLE_APPLICATION_CREDENTIALS_JSON` — скопируйте **весь** JSON из `secrets/drophub-2ac8d-firebase-adminsdk-fbsvc-d31519da74.json` (одной строкой или multiline в Raw Editor). **Redeploy** app.
+
+   В Deploy Logs должно быть: `Firebase Admin initialized for FCM`.
+
 ## Связка с file-service
 
 RabbitMQ и Redis из этого compose используются file-service. В **тот же Railway-проект** импортируйте `file-service/docker-compose.railway.yml`.
@@ -42,7 +46,8 @@ RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
 | `GOOGLE_CLIENT_SECRET` | для OAuth | |
 | `GOOGLE_ID_TOKEN_AUDIENCES` | для mobile | Client IDs через запятую |
 | `MAIL_*` | для email | SMTP |
-| `GOOGLE_APPLICATION_CREDENTIALS` | опционально | FCM push (путь к JSON в контейнере) |
+| `GOOGLE_APPLICATION_CREDENTIALS_JSON` | для FCM push | **Railway:** вставьте содержимое `secrets/drophub-...json` целиком в Variables → Raw Editor |
+| `GOOGLE_APPLICATION_CREDENTIALS` | локально | Путь к JSON-файлу в контейнере (не нужен на Railway, если задан `_JSON`) |
 
 ## Ограничения Railway
 

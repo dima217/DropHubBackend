@@ -15,6 +15,7 @@ import { UploadSessionRepository } from "../../repository/upload.session.reposit
 import { UploadConfirmDto } from "../../dto/upload/upload-confirm.dto";
 import { RpcException } from "@nestjs/microservices";
 import { StorageItemQueryService } from "@/modules/storage/services/storage-item/storage-item.query.service";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class UploadService implements IUploadService {
@@ -86,7 +87,7 @@ export class UploadService implements IUploadService {
 
     const results = await Promise.all(
       params.files.map(
-        async ({ originalName, mimeType, fileSize, storedName }) => {
+        async ({ originalName, mimeType, fileSize }) => {
           if (!fileSize || !originalName || !params.userId) {
             throw new BadRequestException(
               "Invalid upload data for one of the files"
@@ -107,7 +108,7 @@ export class UploadService implements IUploadService {
             originalName,
             mimeType,
             size: fileSize,
-            storedName: storedName,
+            storedName: uuidv4(),
             creatorId: params.userId,
             roomId: params.roomId,
             storageId: params.storageId,

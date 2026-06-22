@@ -1,9 +1,13 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as admin from 'firebase-admin';
+import type { ServiceAccount } from 'firebase-admin';
 
 /**
  * Firebase Cloud Messaging via Admin SDK.
- * Set `GOOGLE_APPLICATION_CREDENTIALS` to the absolute path of the service account JSON (not committed to git).
+ *
+ * Local: `GOOGLE_APPLICATION_CREDENTIALS` — path to service account JSON file.
+ * Railway: `GOOGLE_APPLICATION_CREDENTIALS_JSON` — full JSON content (Raw Editor in Variables).
+ *
  * @see https://firebase.google.com/docs/cloud-messaging/send-message
  */
 @Injectable()
@@ -16,21 +20,45 @@ export class FcmService implements OnModuleInit {
       this.enabled = true;
       return;
     }
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim()) {
+
+    const credential = this.resolveCredential();
+    if (!credential) {
       this.logger.warn(
-        'FCM disabled: set GOOGLE_APPLICATION_CREDENTIALS to the service account JSON file path',
+        'FCM disabled: set GOOGLE_APPLICATION_CREDENTIALS_JSON (Railway) or GOOGLE_APPLICATION_CREDENTIALS (file path)',
       );
       return;
     }
+
     try {
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-      });
+      admin.initializeApp({ credential });
       this.enabled = true;
       this.logger.log('Firebase Admin initialized for FCM');
     } catch (e) {
       this.logger.error('Firebase Admin init failed', e instanceof Error ? e.stack : e);
     }
+  }
+
+  private resolveCredential(): admin.credential.Credential | null {
+    const jsonRaw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim();
+    if (jsonRaw) {
+      try {
+        const serviceAccount = JSON.parse(jsonRaw) as ServiceAccount;
+        return admin.credential.cert(serviceAccount);
+      } catch (e) {
+        this.logger.error(
+          'Invalid GOOGLE_APPLICATION_CREDENTIALS_JSON',
+          e instanceof Error ? e.message : e,
+        );
+        return null;
+      }
+    }
+
+    const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+    if (credentialsPath) {
+      return admin.credential.applicationDefault();
+    }
+
+    return null;
   }
 
   get isEnabled(): boolean {
